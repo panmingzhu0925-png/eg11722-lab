@@ -1,0 +1,6 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert');
+const root=__dirname;let html=fs.readFileSync(path.join(root,'index.html'),'utf8'),included=[];
+html=html.replace(/<script\s+src="([^"?]+)(?:\?[^\"]*)?"\s*><\/script>/g,(_,name)=>{if(path.basename(name)!==name)throw Error('Unexpected script path');let source=fs.readFileSync(path.join(root,name),'utf8');new vm.Script(source,{filename:name});included.push(name);return '<script>\n'+source.replace(/<\/script/gi,'<\\/script')+'\n</script>'});
+html=html.replace(/<a id="offlineDownload"[^>]*>[\s\S]*?<\/a>/,'<span style="font-size:12px;color:#52747e">单文件离线版 · 可直接发送此 HTML 文件</span>');
+assert.equal(included.length,5);assert(!/<script[^>]+src\s*=/i.test(html));assert(!/<link[^>]+(?:href|rel)\s*=/i.test(html));assert(!/<(?:img|iframe)[^>]+src\s*=/i.test(html));assert(!/\bfetch\s*\(|\bimport\s*\(/.test(html));
+let scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);scripts.forEach((s,i)=>new vm.Script(s,{filename:'inline-'+i}));new vm.Script(scripts.join('\n'));fs.writeFileSync(path.join(root,'eg11722-standalone.html'),html,'utf8');console.log('PASS: 5 scripts bundled; no external assets or network fetches; all inline scripts parse together; '+Buffer.byteLength(html)+' bytes');
