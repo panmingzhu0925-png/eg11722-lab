@@ -150,6 +150,24 @@
         "type": "J",
         "x": 480,
         "y": 120
+      },
+      {
+        "id": "CBST",
+        "type": "C",
+        "capKind": "ceramic",
+        "value": 0.1,
+        "x": 450,
+        "y": 300,
+        "vertical": true
+      },
+      {
+        "id": "CVCC",
+        "type": "C",
+        "capKind": "ceramic",
+        "value": 1,
+        "x": 100,
+        "y": 70,
+        "vertical": true
       }
     ],
     "wires": [
@@ -248,6 +266,22 @@
       [
         "U1.VS",
         "J103.a"
+      ],
+      [
+        "CBST.a",
+        "U1.VB"
+      ],
+      [
+        "CBST.b",
+        "U1.VS"
+      ],
+      [
+        "CVCC.a",
+        "U1.VCC"
+      ],
+      [
+        "CVCC.b",
+        "U1.GND"
       ]
     ],
     "routes": {
@@ -379,7 +413,7 @@
         }
       ]
     },
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "wireWidths": {
       "VIN.a|J101.a": 4,
       "J101.a|U1.VIN": 4,
