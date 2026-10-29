@@ -19,14 +19,14 @@
       {
         "id": "RS",
         "type": "R",
-        "value": 0.05,
+        "value": 0.075,
         "x": 550,
         "y": 130
       },
       {
         "id": "L1",
         "type": "L",
-        "value": 48,
+        "value": 100,
         "x": 740,
         "y": 130
       },
@@ -42,10 +42,11 @@
       {
         "id": "C3",
         "type": "C",
-        "value": 787,
+        "value": 470,
         "x": 940,
         "y": 280,
-        "vertical": true
+        "vertical": true,
+        "capKind": "electrolytic"
       },
       {
         "id": "RT",
@@ -66,7 +67,7 @@
       {
         "id": "LOAD",
         "type": "I",
-        "value": 2,
+        "value": 1.5,
         "x": 1050,
         "y": 280,
         "vertical": true
