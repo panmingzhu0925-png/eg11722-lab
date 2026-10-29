@@ -1,3 +1,4 @@
+function circuitStorageKey(suffix){return (typeof CHIP_STORAGE_PREFIX==='string'?CHIP_STORAGE_PREFIX:'eg11722')+'-'+suffix}
 function engineeringValue(type,value){let n=Number(value),a=Math.abs(n),factor=1,unit=units[type]??'';if(type==='R'){if(a>=1e6){factor=1e6;unit='MΩ'}else if(a>=1000){factor=1000;unit='kΩ'}else if(a>0&&a<1){factor=.001;unit='mΩ'}else unit='Ω'}if(type==='C'){if(a>=1000){factor=1000;unit='mF'}else if(a>=1){unit='µF'}else if(a>=.001){factor=.001;unit='nF'}else{factor=.000001;unit='pF'}}if(type==='L'&&a>=1000){factor=1000;unit='mH'}let display=Number((n/factor).toPrecision(5));return {value:display,unit,factor,text:display+' '+unit}}
 let circuit={parts:[],wires:[]},selected=null,wireStart=null,wiring=false,history=[],drag=null,editorReady=false,extraId=0;
 function capacitorKind(p){return p.capKind??(p.id==='C3'?'electrolytic':'ceramic')}
