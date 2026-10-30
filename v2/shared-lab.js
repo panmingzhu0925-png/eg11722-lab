@@ -1,5 +1,6 @@
 // V2 additions shared by every chip adapter. Snapshots keep only current/previous.
 (function(){
+document.getElementById('chipSelect').onchange=e=>{if(parent!==window){parent.postMessage({type:'eg-v2-chip',chip:e.target.value},location.origin==='null'?'*':location.origin)}else location.href=e.target.value+'.html'};
 const pfc=typeof CHIP_STORAGE_PREFIX==='string'&&CHIP_STORAGE_PREFIX.startsWith('eg1654'),wave=document.getElementById(pfc?'pfcWave':'wave');
 let previous=null,current=null,revision='',timer=null,overlayEnabled=true;const parameterRevision=()=>JSON.stringify({parts:circuit.parts.map(p=>[p.id,p.value,p.capKind,p.isat]),wires:circuit.wires,controls:['esr','eff','freqLine','variant','junctionTemp'].map(id=>document.getElementById(id)?.value)});
 const tools=document.createElement('div');tools.style.cssText='padding:12px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';tools.innerHTML='<button id="compareToggle">上一次波形：显示</button><button id="compareClear">清除对比</button><span id="compareInfo" style="font-size:12px;color:#b6cce0">修改参数后自动保留上一次；虚线为上一次。</span>';wave.before(tools);
