@@ -45,3 +45,5 @@ EN引脚及默认470kΩ VIN上拉已建模，EN状态由电路连接决定，支
 ## EG1654 连续模式 PFC
 在线页面 eg1654.html；独立离线文件 eg1654-standalone.html。通过芯片下拉列表与EG11722互相切换；各芯片草稿分开保存。默认EG1654A 65kHz、600W、300µH、440µF、377.5V。支持工频包络和开关周期放大、多通道同步、可编辑网表、OCP/OPL/UVLO/BO/OTP/OVP边界提示。BO启动峰值与运行平均值模型参考onsemi AND8322；VM/VC稳态公式参考NCP1654和AND8321。EG1654的9.5V关闭阈值等数值仍以EG1654规格为准。未标定真实控制环路、启动时序、PF、THD、损耗及EMI。
 资料：EG1654数据手册V1.0；600W方案说明；NCP1654设计计算表。原文件仅用于本地研究，未上传。补充公开参考：https://www.onsemi.com/download/data-sheet/pdf/ncp1654-d.pdf 、https://www.onsemi.com/pub/Collateral/AND8322-D.PDF 、https://www.onsemi.com/pub/Collateral/AND8321-D.PDF 。
+
+无极性电阻、电感、陶瓷/薄膜电容按两端节点匹配，不限定a/b方向；二极管、电解电容及直流源仍校验极性。示波器时间轴可设置：EG1654工频ms/div与开关µs/div分别记忆；EG11722使用µs/div。横轴10格，所有通道使用同一时间窗及游标。
