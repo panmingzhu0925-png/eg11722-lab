@@ -31,7 +31,7 @@ function componentLabel(p,value){
  if(side==='bottom'){x=0;y=ey+21;anchor='middle'}
  if(side==='left'){x=-ex-16;y=inline||p.type==='U'?4:-5;anchor='end'}
  if(side==='right'){x=ex+16;y=inline||p.type==='U'?4:-5;anchor='start'}
- const text=(kind,content,tx,ty)=>{let offset=p.labelOffsets?.[kind]??{x:0,y:0};return `<text class="component-label" data-label-part="${escape(p.id)}" data-label-kind="${kind}" data-label-position="${side}" data-label-layout="${inline?'inline':'stack'}" x="${tx+offset.x}" y="${ty+offset.y}" text-anchor="${anchor}" fill="#354f63" stroke="none" font-size="12" style="cursor:move;pointer-events:all;user-select:none">${escape(content)}</text>`};return text('id',p.id,x,y)+(['U','Q'].includes(p.type)?'':text('value',value,x+(inline?(anchor==='end'?-1:1)*Math.max(42,p.id.length*8+10):0),y+(inline?0:17)))
+ const text=(kind,content,tx,ty)=>{let offset=p.labelOffsets?.[kind]??{x:0,y:0};return `<text class="component-label" data-label-part="${escape(p.id)}" data-label-kind="${kind}" data-label-position="${side}" data-label-layout="${inline?'inline':'stack'}" x="${tx+offset.x}" y="${ty+offset.y}" text-anchor="${anchor}" fill="#354f63" stroke="none" font-size="12" style="cursor:move;pointer-events:all;user-select:none">${escape(content)}</text>`};return text('id',p.refdes??p.id,x,y)+(['U','Q'].includes(p.type)?'':text('value',value,x+(inline?(anchor==='end'?-1:1)*Math.max(42,p.id.length*8+10):0),y+(inline?0:17)))
 
 }
 function syncLabelInspector(p){for(let [id,key,fallback] of [['labelPosition','labelPosition','auto'],['labelLayout','labelLayout','stack']]){el(id).disabled=!p||['G','J'].includes(p.type)||id==='labelLayout'&&p.type==='U';el(id).value=p?.[key]??fallback}}
