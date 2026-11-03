@@ -46,15 +46,11 @@ for(let event of ['pointerup','pointercancel'])wave.addEventListener(event,e=>{i
 window.refreshScopeComparison=()=>{if(parameterRevision()===revision)current=capture();paint()};revision=parameterRevision();current=capture();refreshEdge();decorate();
 })();
 
-// A shared viewport layout: retain live metric nodes, move only their siblings.
-(function pinMetricWorkspace(){
- const metrics=document.querySelector('.layout>article>.stats'),article=metrics?.parentElement;
- if(!article||metrics.childElementCount!==6||article.querySelector('.lab-workspace'))return;
- const workspace=document.createElement('div');workspace.className='lab-workspace';
- while(metrics.nextSibling)workspace.append(metrics.nextSibling);
- article.append(workspace);article.classList.add('lab-viewport-article');
- function fitViewport(){const top=Math.max(12,article.getBoundingClientRect().top);article.style.setProperty('--lab-viewport-height',Math.max(280,window.innerHeight-top-12)+'px')}
- let pending=false;function scheduleFit(){if(pending)return;pending=true;const run=()=>{pending=false;fitViewport()};if(typeof requestAnimationFrame==='function')requestAnimationFrame(run);else run()}
- fitViewport();window.addEventListener('resize',scheduleFit,{passive:true});window.addEventListener('scroll',scheduleFit,{passive:true});
- if(typeof ResizeObserver==='function')new ResizeObserver(scheduleFit).observe(metrics);
+// Keep original metric nodes; compact them only after scrolling to the workbench.
+(function compactLiveMetrics(){
+ const metrics=document.querySelector('.layout>article>.stats');if(!metrics||metrics.childElementCount!==6)return;
+ const marker=document.createElement('div');marker.className='metrics-marker';metrics.before(marker);
+ const fit=()=>metrics.classList.toggle('metrics-docked',marker.getBoundingClientRect().top<12);
+ let pending=false;const schedule=()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;fit()})};
+ window.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule,{passive:true});fit();
 })();
