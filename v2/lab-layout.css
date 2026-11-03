@@ -1,0 +1,10 @@
+/* Shared viewport layout for all chip pages, online and offline. */
+.layout>article{min-width:0}
+.parameter-details{padding:12px 0 0;margin:14px 0 0;border:0;border-top:1px solid #e0e6ed;border-radius:0;background:transparent}
+.parameter-details>summary{font-size:13px;font-weight:400;color:#43546a;padding:4px 0 10px;cursor:pointer}
+.parameter-details .sub{border-top:0;margin-top:0;padding-top:4px}
+.parameter-details .control-group{margin-top:8px}
+@media(min-width:951px){
+ .layout{align-items:start}
+ .layout>aside.panel{position:sticky;top:12px;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}
+}
