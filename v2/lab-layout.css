@@ -14,10 +14,10 @@
 @media(min-width:951px){
  html{scroll-padding-top:110px;overflow-anchor:none}
  .layout>article>.stats{position:sticky;top:12px;z-index:20;background:#f3f5f8}
- .layout>article>.stats.metrics-docked{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:6px;padding:8px 0;border-bottom:1px solid #dbe3ec;box-shadow:0 8px 12px #233e5410}
- .metrics-docked .stat{padding:8px;border-radius:7px;min-width:0}
- .metrics-docked .stat small{font-size:11px}
- .metrics-docked .stat strong{font-size:18px;margin-top:4px;white-space:nowrap}
- .metrics-docked .stat em{display:none}
+ .layout>article>.stats{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:6px;padding:8px 0;border-bottom:1px solid #dbe3ec;box-shadow:0 8px 12px #233e5410}
+ .layout>article>.stats .stat{padding:8px;border-radius:7px;min-width:0}
+ .layout>article>.stats .stat small{font-size:11px}
+ .layout>article>.stats .stat strong{font-size:18px;margin-top:4px;white-space:nowrap}
+ .layout>article>.stats .stat em{display:none}
  .panel.scope,.schematic-panel,#loopPanel1163{scroll-margin-top:110px}
 }
