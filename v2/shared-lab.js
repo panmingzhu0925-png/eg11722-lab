@@ -45,3 +45,16 @@ wave.addEventListener('pointermove',e=>{let a=axes();if(!a)return;let p=cursorPo
 for(let event of ['pointerup','pointercancel'])wave.addEventListener(event,e=>{if(cursorDrag===null)return;e.stopImmediatePropagation?.();cursorDrag=null;decorate()},true);wave.addEventListener('pointerleave',()=>{if(cursorDrag===null){hoverFraction=null;decorate()}});window.decorateScope=decorate;const beforeDecorate=update;update=function(){beforeDecorate();decorate()};
 window.refreshScopeComparison=()=>{if(parameterRevision()===revision)current=capture();paint()};revision=parameterRevision();current=capture();refreshEdge();decorate();
 })();
+
+// A shared viewport layout: retain live metric nodes, move only their siblings.
+(function pinMetricWorkspace(){
+ const metrics=document.querySelector('.layout>article>.stats'),article=metrics?.parentElement;
+ if(!article||metrics.childElementCount!==6||article.querySelector('.lab-workspace'))return;
+ const workspace=document.createElement('div');workspace.className='lab-workspace';
+ while(metrics.nextSibling)workspace.append(metrics.nextSibling);
+ article.append(workspace);article.classList.add('lab-viewport-article');
+ function fitViewport(){const top=Math.max(12,article.getBoundingClientRect().top);article.style.setProperty('--lab-viewport-height',Math.max(280,window.innerHeight-top-12)+'px')}
+ let pending=false;function scheduleFit(){if(pending)return;pending=true;const run=()=>{pending=false;fitViewport()};if(typeof requestAnimationFrame==='function')requestAnimationFrame(run);else run()}
+ fitViewport();window.addEventListener('resize',scheduleFit,{passive:true});window.addEventListener('scroll',scheduleFit,{passive:true});
+ if(typeof ResizeObserver==='function')new ResizeObserver(scheduleFit).observe(metrics);
+})();

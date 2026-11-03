@@ -8,3 +8,11 @@
  .layout{align-items:start}
  .layout>aside.panel{position:sticky;top:12px;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}
 }
+
+/* Keep the six live metrics outside the scrolling circuit/scope workspace. */
+.lab-workspace{min-width:0}
+@media(min-width:951px) and (min-height:600px){
+ .layout>article.lab-viewport-article{display:flex;flex-direction:column;height:var(--lab-viewport-height,calc(100vh - 24px));min-height:0}
+ .lab-viewport-article>.stats{flex:0 0 auto;margin-bottom:12px}
+ .lab-viewport-article>.lab-workspace{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;padding-right:4px;padding-bottom:12px}
+}
