@@ -23,3 +23,5 @@ for(let [id,text]of [['irms','开关频率'],['peak','电感电流峰值'],['rip
 
 
 if(el('demoLayout'))el('demoLayout').onclick=()=>{localStorage.setItem(circuitStorageKey('before-demo-layout'),JSON.stringify(circuit));remember();arrangeForwardDemo(circuit);renderEditor();fitCircuitView();if(typeof editorChanged==='function')editorChanged()};
+
+(function(){let maximum=el('loadMax'),slider=el('load');if(!maximum)return;let saved;try{saved=Number(localStorage.getItem(circuitStorageKey('load-slider-max')))}catch{}let initial=Number.isFinite(saved)&&saved>=.1?saved:20;initial=Math.max(initial,Number(slider.value));slider.max=initial;maximum.value=initial;maximum.onchange=()=>{let value=Number(maximum.value),current=fpart('LOAD').value;if(!Number.isFinite(value)||value<.1||value<current){maximum.setCustomValidity('上限必须是正数，且不小于当前负载电流 '+current+' A');maximum.reportValidity();return}maximum.setCustomValidity('');slider.max=value;try{localStorage.setItem(circuitStorageKey('load-slider-max'),String(value))}catch{}};maximum.oninput=()=>maximum.setCustomValidity('')})();
