@@ -40,7 +40,7 @@ function compileEG12523(c){
 function simulateEG12523(c,options={},progress=()=>{}){
  const model=compileEG12523(c),{network:n,macros:m,u,get}=model,voltage=k=>k<0?0:n.voltage[k],diff=(a,b)=>voltage(a)-voltage(b),fs=4300000/(get('R29').value/1000),period=1/fs,control=get('U1'),end=options.duration??.8,steps=options.stepsPerCycle??64;
  if(!Number.isFinite(end)||end<=0||end>3||steps<16||steps>512)throw Error('仿真时长或步长无效');
- const rows=[],events=[];let t=0,running=false,latched=false,faultTime=0,cycle=-1,request=false,gate=false,gateChange=Infinity,pulseStart=0,csOff=Infinity,lastSave=-1,lastProgress=-1,stepCount=0,lastOpen=false,cyclePeak=0,overloadTime=0,solution=null;
+ const rows=[],events=[];let t=0,running=false,latched=false,faultTime=0,cycle=-1,request=false,gate=false,gateChange=Infinity,pulseStart=0,csOff=Infinity,lastSave=-1,lastProgress=-1,stepCount=0,lastOpen=false,cyclePeak=0,overloadTime=0,solution=null,bucketTime=0,bucketIl=0,bucketIds=0,bucketHigh=-Infinity,bucketLow=Infinity;
  const tailRows=[],readRow=()=>({t,vin:diff(u('VIN'),u('AGND')),vcc:diff(u('VCC'),u('PGND')),vo:diff(model.node('LOAD.a'),model.node('LOAD.b')),iout:m.loads.reduce((sum,x)=>sum+diff(x.branch.a,x.branch.c)/x.branch.value,0),vg:diff(model.node('DB1.p'),model.node('DB1.n')),fb:diff(u('FB'),u('AGND')),ss:diff(u('SS'),u('AGND')),cs:diff(u('CS'),u('AGND')),out:diff(u('OUT'),u('AGND')),ho:diff(u('HO'),u('VS')),lo:diff(u('LO'),u('PGND')),im:m.magnetizing.state,il:m.outputInductor?.state??0,ids:m.mos.length?diff(m.mos[1].drain,m.mos[1].source)/m.mos[1].branch.value:0,vds:m.mos.length?diff(m.mos[1].drain,m.mos[1].source):0,running:running?1:0,pwm:request?1:0,latched:latched?1:0});
  while(t<end){let vin=diff(u('VIN'),u('AGND')),vcc=diff(u('VCC'),u('PGND')),vb=diff(u('VB'),u('VS')),vo=diff(model.node('LOAD.a'),model.node('LOAD.b')),fb=diff(u('FB'),u('AGND')),ss=diff(u('SS'),u('AGND')),cs=diff(u('CS'),u('AGND'));
  if(vin>32)throw Error('VIN超过32V额定范围，停止理想模型计算');if(vin<(control.stopVoltage??9)){if(running)events.push({t,type:'UVLO_STOP',vin});running=false;latched=false;faultTime=0;overloadTime=0}else if(vin>=(control.startVoltage??15)&&!running){running=true;events.push({t,type:'VIN_START',vin})}
@@ -63,10 +63,11 @@ function simulateEG12523(c,options={},progress=()=>{}){
  let open=running&&fb>=(control.fbOpenThreshold??4.9)&&optoCurrent<(control.fbOpenCurrent??1e-6);if(open&&!lastOpen)events.push({t,type:'FB_OPEN_TIMER',fb});if(open)faultTime+=dt;else faultTime=0;if(faultTime>=(control.fbOpenDelay??.070)&&!latched){latched=true;request=false;gate=false;model.out.value=model.ho.value=model.lo.value=0;events.push({t:t+dt,type:'FB_OPEN_STOP',fb})}lastOpen=open;
  try{solution=n.step(dt)}catch(e){throw Error('t='+t.toFixed(9)+'s: '+e.message)}t+=dt;stepCount++;cyclePeak=Math.max(cyclePeak,diff(u('CS'),u('AGND')));
  if(n.voltage.some(v=>!Number.isFinite(v)||Math.abs(v)>1e5))throw Error('电路发散，t='+t);
- if(t-lastSave>=Math.max(end/20000,period/steps)||t>=end){rows.push(readRow());lastSave=t}
+ let instantIl=m.outputInductor?.state??0,instantIds=m.mos.length?diff(m.mos[1].drain,m.mos[1].source)/m.mos[1].branch.value:0;bucketTime+=dt;bucketIl+=instantIl*dt;bucketIds+=instantIds*dt;bucketHigh=Math.max(bucketHigh,instantIl);bucketLow=Math.min(bucketLow,instantIl);
+ if(t-lastSave>=Math.max(end/20000,period/steps)||t>=end){let row=readRow();row.avg=bucketIl/bucketTime;row.idsAvg=bucketIds/bucketTime;row.peak=bucketHigh;row.low=bucketLow;rows.push(row);lastSave=t;bucketTime=bucketIl=bucketIds=0;bucketHigh=-Infinity;bucketLow=Infinity}
  if(t>=end-.002)tailRows.push(readRow());
  if(t-lastProgress>=.01){progress({t,end,stepCount});lastProgress=t}
- if(stepCount>(options.maxSteps??3000000))throw Error('达到步数上限，未完成仿真');
+ if(stepCount>(options.maxSteps??40000000))throw Error('达到步数上限，未完成仿真');
  }
  return {rows,tailRows,events,stepCount,settings:{lineHz:options.lineHz??50,stepsPerCycle:steps},assumptions:['FB开路检测暂用4.9V且光耦电流小于1µA','FB/CS按无偏置2.8增益','驱动输出以串联电阻等效，尚未实现拉灌电流限幅；驱动UVLO暂取5V；未加入抖频和磁芯饱和/磁损、实际二极管反向恢复','431等效跨导与20µs极点、光耦默认CTR100%和10µs极点','负载在0.5V以下采用电导折返','CC最小脉宽采用96pC/Icc近似，限流阈值顶到0.8V时启用']};
 }
