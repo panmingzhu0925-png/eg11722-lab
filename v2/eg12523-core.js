@@ -84,3 +84,5 @@ function arrangeForwardDemo(c){
  c.layoutRevision='demo-20261110-1';return c;
 }
 const forwardBeforeDemoLayout=forwardDefault;forwardDefault=function(){return arrangeForwardDemo(forwardBeforeDemoLayout())};
+
+function forwardWireAlias(w){const aliases={'U1.HO|R5.a':'HO','U1.HO|R9.a':'HO','U1.LO|R15.a':'LO','U1.LO|R10.a':'LO','U1.VS|Q1.S':'VS','U1.FB|U3.C':'FB','VCC.a|U1.VIN':'VIN','D6.b|VCC.a':'VIN','R16.b|VCC.a':'VIN','U1.AGND|GU.a':'PGND','U1.PGND|GU.a':'PGND','U3.E|GU.a':'PGND','GU.a|GP.a':'PGND'};return aliases[w.join('|')]||aliases[[...w].reverse().join('|')]||null}
