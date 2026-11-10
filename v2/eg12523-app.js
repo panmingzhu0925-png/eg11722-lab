@@ -21,3 +21,5 @@ for(let [id,text]of [['irms','开关频率'],['peak','电感电流峰值'],['rip
 
 
 
+
+if(el('demoLayout'))el('demoLayout').onclick=()=>{localStorage.setItem(circuitStorageKey('before-demo-layout'),JSON.stringify(circuit));remember();arrangeForwardDemo(circuit);renderEditor();fitCircuitView();if(typeof editorChanged==='function')editorChanged()};
