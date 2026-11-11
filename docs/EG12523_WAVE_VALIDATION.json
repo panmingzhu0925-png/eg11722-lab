@@ -1,0 +1,13 @@
+{
+  "tracePoints": 79993,
+  "fields": 38,
+  "traceMB": 24.317872,
+  "ipPeak": 6.594993430343189,
+  "imPeak": 0.3943949232093746,
+  "rectifierPeak": 19.8696000747518,
+  "freewheelPeak": 19.79113869276672,
+  "primaryResetTailError": 3.258433214914369e-8,
+  "lowVgsPeak": 15.145917733197729,
+  "highVgsPeak": 16.172456042084832,
+  "busV": 274.2355659748236
+}
