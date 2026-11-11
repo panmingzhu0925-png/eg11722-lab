@@ -1,0 +1,76 @@
+{
+  "stepCount": 1282734,
+  "program": [
+    {
+      "t": 0,
+      "current": 5
+    },
+    {
+      "t": 0.5,
+      "current": 5
+    },
+    {
+      "t": 0.51,
+      "current": 10
+    },
+    {
+      "t": 0.8,
+      "current": 10
+    },
+    {
+      "t": 0.81,
+      "current": 0
+    },
+    {
+      "t": 1,
+      "current": 0
+    }
+  ],
+  "observations": [
+    {
+      "time": 0,
+      "actualTime": 0.00004325581395348837,
+      "command": 5,
+      "current": 1.1007395808819708e-18,
+      "voltage": 1.1007395808819708e-19
+    },
+    {
+      "time": 0.5,
+      "actualTime": 0.5,
+      "command": 5,
+      "current": 3.8645248139495235e-22,
+      "voltage": 3.8645248139495235e-23
+    },
+    {
+      "time": 0.51,
+      "actualTime": 0.51,
+      "command": 10,
+      "current": 1.3979069624397736e-22,
+      "voltage": 6.989534812198868e-24
+    },
+    {
+      "time": 0.8,
+      "actualTime": 0.8,
+      "command": 10,
+      "current": 9.999983442172747,
+      "voltage": 23.588255532812823
+    },
+    {
+      "time": 0.81,
+      "actualTime": 0.81,
+      "command": 0,
+      "current": 2.363955166942395e-9,
+      "voltage": 23.639551669423952
+    },
+    {
+      "time": 1,
+      "actualTime": 1,
+      "command": 0,
+      "current": 2.4221937768500943e-9,
+      "voltage": 24.221937768500943
+    }
+  ],
+  "finalVoltage": 24.221937768500943,
+  "maxVoltage": 25.640570263881784,
+  "finalCurrent": 2.4221937768500943e-9
+}
