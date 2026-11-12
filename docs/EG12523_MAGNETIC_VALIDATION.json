@@ -1,0 +1,46 @@
+{
+  "parameters": {
+    "primaryTurns": 16,
+    "areaMm2": 286.9,
+    "lengthMm": 53.291,
+    "volumeMm3": 15289.2,
+    "inductance": 0.002,
+    "initialB": 0,
+    "material": "未确认",
+    "source": "通洋 EQ40/20缺省几何参考；材料曲线未提供",
+    "area": 0.0002869
+  },
+  "lastCycle": {
+    "start": 0.789980930232558,
+    "end": 0.7899953488372091,
+    "min": -0.06923953214480935,
+    "max": 251.11189957426706,
+    "delta": 251.18113910641188,
+    "netChange": 0.0031082093643088476,
+    "positiveVoltSeconds": 0.001153021900954073,
+    "negativeVoltSeconds": 0.0011530076330298071,
+    "resetRatio": 0.999987625625971
+  },
+  "maxFaradayErrorVolts": 9.925349786499282e-8,
+  "magnetizingCurrentPeak": 0.5923802695442605,
+  "outputVoltage": 23.836678866688565,
+  "limits": "Linear magnetic state only; B0 is assumed; no saturation, hysteresis or core loss model",
+  "programmedLoad2mH": {
+    "duration": 1,
+    "stepsPerCycle": 64,
+    "finalVoltage": 24.247862490668798,
+    "finalCurrent": 2.4247862490668798e-9,
+    "maxB": 268.1030589010241,
+    "lastCycle": {
+      "start": 0.9999734883720929,
+      "end": 0.999987906976744,
+      "min": 0.00003318364230257656,
+      "max": 5.38415434537439,
+      "delta": 5.384121161732088,
+      "netChange": -5.0074619879205903e-11,
+      "positiveVoltSeconds": 0.000024715269847469493,
+      "negativeVoltSeconds": 0.000024715269847699348,
+      "resetRatio": 1.0000000000093001
+    }
+  }
+}
