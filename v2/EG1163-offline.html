@@ -170,8 +170,9 @@ function eg1163RestartAfterVccFault(s,state,{runningCurrent=.008,diodeDrop=.7}={
 // never derive LO turn-on from the shortened HO pulse. Low-side protection remains independent.
 function eg1163GateEdges(q){
  let dead=200e-9*q.fs,wrap=v=>((v%1)+1)%1,control=Math.min(q.erro??(EG1163_CP.low+q.duty*EG1163_CP.span),q.ss??4.4),ratio=Math.max(0,Math.min(1,(control-EG1163_CP.low)/EG1163_CP.span));
- // Reserve the nominal 5% LO window before subtracting dead time, even below CP peak.
- if(q.maxDutyMode||ratio>=.95)return {hoStart:dead,hoEnd:q.duty+dead,hoWidth:Math.max(0,q.duty),loStart:.95+dead,loEnd:Math.min(1,(q.cutPhase??1)+dead),loWidth:Math.max(0,Math.min(1,(q.cutPhase??1)+dead)-.95-dead)};
+ // Use one CP phase origin through saturation; a separate max-duty branch
+ // previously moved HO from the period end to the next period start.
+ ratio=Math.min(.95,ratio);
  if(ratio<=0){let width=q.negativeCut?Math.max(0,Math.min(1,(q.cutPhase??1)+dead)):1;return {hoStart:0,hoEnd:0,hoWidth:0,loStart:0,loEnd:wrap(width),loWidth:width}}
  // CP is displayed with the same phase origin as eg1163InternalSignals.
  // LO switches OFF at the falling-ramp crossing. HO switches ON200ns later,
