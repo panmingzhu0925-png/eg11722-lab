@@ -1,0 +1,101 @@
+{
+  "conditions": {
+    "vin": 60,
+    "ss": 1e-8,
+    "cp": 2.2e-10,
+    "compensation": "20kohm/10nF",
+    "supply": "independent14.4V; starts at PWM enable, not full AC cold start",
+    "duration": 0.2,
+    "productionModelUnchanged": true
+  },
+  "results": [
+    {
+      "outputUa": 20,
+      "load": 0,
+      "erro1ms": 2.3899923509677308,
+      "erro3Vms": 1.3138888888888884,
+      "erro10ms": 0,
+      "peakOutput": 20.798655836107613,
+      "finalOutput": 19.865998773553585,
+      "tailMin": 19.865998773553585,
+      "tailMax": 20.008732766944338
+    },
+    {
+      "outputUa": 20,
+      "load": 10,
+      "erro1ms": 2.306631632687488,
+      "erro3Vms": 1.3597222222222218,
+      "erro10ms": 1.9878837826129578,
+      "peakOutput": 16.562228641277084,
+      "finalOutput": 12.116519182853418,
+      "tailMin": 12.116519182853416,
+      "tailMax": 12.116519182853418
+    },
+    {
+      "outputUa": 40,
+      "load": 0,
+      "erro1ms": 4.683999391231866,
+      "erro3Vms": 0.5958333333333332,
+      "erro10ms": 0,
+      "peakOutput": 12.571368923099271,
+      "finalOutput": 12.117332851791394,
+      "tailMin": 12.117332851627708,
+      "tailMax": 12.117332851816988
+    },
+    {
+      "outputUa": 40,
+      "load": 10,
+      "erro1ms": 4.808943738863938,
+      "erro3Vms": 0.5652777777777777,
+      "erro10ms": 1.9173943594234193,
+      "peakOutput": 12.11651918285324,
+      "finalOutput": 12.11651918285323,
+      "tailMin": 12.116519182853228,
+      "tailMax": 12.116519182853231
+    },
+    {
+      "outputUa": 100,
+      "load": 0,
+      "erro1ms": 5,
+      "erro3Vms": 0.2597222222222222,
+      "erro10ms": 1.7274813597875058,
+      "peakOutput": 12.119542433102094,
+      "finalOutput": 12.117332851791394,
+      "tailMin": 12.117332851791394,
+      "tailMax": 12.117332851791394
+    },
+    {
+      "outputUa": 100,
+      "load": 10,
+      "erro1ms": 5,
+      "erro3Vms": 0.21388888888888885,
+      "erro10ms": 1.9122295684178428,
+      "peakOutput": 12.11651918285342,
+      "finalOutput": 12.11651918285342,
+      "tailMin": 12.11651918285342,
+      "tailMax": 12.11651918285342
+    },
+    {
+      "outputUa": 200,
+      "load": 0,
+      "erro1ms": 5,
+      "erro3Vms": 0.2597222222222222,
+      "erro10ms": 1.7352035013646017,
+      "peakOutput": 12.119542425577887,
+      "finalOutput": 12.117332851791197,
+      "tailMin": 12.117332851791197,
+      "tailMax": 12.117332851791197
+    },
+    {
+      "outputUa": 200,
+      "load": 10,
+      "erro1ms": 5,
+      "erro3Vms": 0.21388888888888885,
+      "erro10ms": 1.9122295684178217,
+      "peakOutput": 12.11651918285342,
+      "finalOutput": 12.11651918285342,
+      "tailMin": 12.11651918285342,
+      "tailMax": 12.11651918285342
+    }
+  ]
+}
