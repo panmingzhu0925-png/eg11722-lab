@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EG12523 双管正激变压器计算</title>
+<style>
+:root{font:15px/1.5 system-ui,"Microsoft YaHei",sans-serif;color:#20344b;background:#f3f7fa}
+body{margin:0}main{max-width:1140px;padding:22px clamp(12px,4vw,40px) 48px;margin:auto}
+nav,.tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+a{color:#215d94}h1{font-size:clamp(1.4rem,3.5vw,2.1rem);margin-bottom:6px}h2{margin-top:0}
+p{margin:.5em 0 1em}section{background:white;border:1px solid #d6e3ed;border-radius:9px;margin-top:20px;padding:clamp(10px,2vw,22px)}
+.scroll{overflow:auto;border:1px solid #dbe5ef;border-radius:6px}.catalog{max-height:520px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid #e4ecf3}
+thead th{background:#eaf2f8;position:sticky;top:0;z-index:1}tbody th{font-weight:500}
+td:first-child,td:nth-child(4),output,.catalog th,.catalog td{white-space:nowrap}
+input,button{font:inherit;padding:5px 8px;border:1px solid #9fb9d0;border-radius:5px;color:inherit;background:#fff}
+input[type=number]{width:7em;background:#eaf5ff}input[aria-invalid=true]{border-color:#ae332a}
+button{cursor:pointer;background:#edf5fb}output{color:#124c79;font-weight:650}
+#status:not(:empty){color:#863017;background:#fff3e9;padding:8px;border-radius:5px}
+</style>
+<script type="module" src="./eg12523-transformer.mjs"></script>
+</head>
+<body><main>
+<nav aria-label="返回仿真"><a id="back" href="./EG12523.html">返回 EG12523 仿真</a></nav>
+<h1>EG12523 双管正激变压器及电感计算</h1>
+<p>修改蓝底输入项，结果实时更新。计算沿用 EGmicro 原表公式，适用于双管正激拓扑，结果供设计参考。</p>
+<section aria-labelledby="design">
+  <div class="tools"><h2 id="design">变压器及电感</h2><button id="reset" type="button">恢复原表默认值</button><a href="#cores">查看磁芯对照表</a></div>
+  <p id="status" role="status"></p>
+  <div class="scroll"><table>
+    <thead><tr><th>符号</th><th>项目</th><th>数值</th><th>单位</th><th>注释</th></tr></thead>
+    <tbody id="design-rows"></tbody>
+  </table></div>
+</section>
+<section aria-labelledby="cores">
+  <h2 id="cores">磁芯参数对照</h2>
+  <p><label for="core-search">搜索型号或材料</label> <input id="core-search" type="search"></p>
+  <p id="core-empty" hidden>没有匹配的磁芯。</p>
+  <div class="scroll catalog"><table>
+    <thead><tr><th>型号</th><th>材料</th><th>尺寸 (mm)</th><th>Ap (cm⁴)</th><th>Ae (mm²)</th><th>Aw (mm²)</th><th>AL (nH/N²)</th><th>Le (mm)</th><th>Ve (mm³)</th><th>重量 (g)</th><th>PCL 100kHz 200mT @100℃ (W)</th><th>Pt 100kHz (W)</th><th>骨架幅宽</th><th>引脚</th><th>形状</th><th>操作</th></tr></thead>
+    <tbody id="core-rows"></tbody>
+  </table></div>
+</section>
+</main>
+<script>if (new URLSearchParams(location.search).get('from') === 'customer') document.querySelector('#back').href = '../customer/EG12523.html';</script>
+</body>
+</html>
