@@ -19,7 +19,14 @@ input,button{font:inherit;padding:5px 8px;border:1px solid #9fb9d0;border-radius
 input[type=number]{width:7em;background:#eaf5ff}input[aria-invalid=true]{border-color:#ae332a}
 button{cursor:pointer;background:#edf5fb}output{color:#124c79;font-weight:650}
 #status:not(:empty){color:#863017;background:#fff3e9;padding:8px;border-radius:5px}
+
+html.embedded { background:transparent; }
+.embedded main { max-width:none; padding:0 0 12px; }
+.embedded nav, .embedded h1 { display:none; }
+.embedded section:first-of-type { margin-top:12px; }
+.embedded main { display:flow-root; }
 </style>
+<script>if (new URLSearchParams(location.search).get('embedded') === '1') document.documentElement.classList.add('embedded');</script>
 <script type="module" src="./eg12523-transformer.mjs"></script>
 </head>
 <body><main>
