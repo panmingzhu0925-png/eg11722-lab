@@ -13,7 +13,47 @@
   <button type="button" id="forward-simulation-tab" role="tab" aria-selected="true" aria-controls="forward-simulation">电路与仿真</button>
   <button type="button" id="forward-design-tab" role="tab" aria-selected="false" aria-controls="forward-design" tabindex="-1">变压器设计</button>
 </div>
-<div id="forward-simulation" role="tabpanel" aria-labelledby="forward-simulation-tab"><div class="layout"><aside class="panel pad eg-sidebar"><div class="sidebar-title"><span class="eyebrow">SIMULATION</span><h2>输入与运行</h2></div><label class="setting-row" for="vin"><span>AC 电压 <small>Vac RMS</small></span><input id="vin" type="number" value="220" min="0" max="1000" step="1"><output id="vinVal" hidden></output></label><label class="setting-row" for="freqLine"><span>电网频率 <small>Hz</small></span><input id="freqLine" type="number" value="50" min="45" max="65" step="1"><output id="freqLineVal" hidden></output></label><section class="program-load"><label class="setting-row" for="loadMode"><span>负载方式</span><select id="loadMode"><option value="fixed">固定电流</option><option value="program">可编程电流</option></select></label><label class="setting-row" id="fixedLoadRow" for="load"><span>负载电流 <small>A</small></span><input id="load" type="number" value="17" min="0" max="1000" step="0.1"><output id="loadVal" hidden></output></label><div id="loadProgramEditor" hidden><div class="load-table-scroll"><table class="load-table"><thead><tr><th>时间 / s</th><th>电流 / A</th><th>斜率 / A/s</th><th></th></tr></thead><tbody id="loadProgramRows"></tbody></table></div><div class="load-table-actions"><button id="addLoadPoint" type="button">＋ 时间点</button><button id="loadExample" type="button">载入示例</button></div><p class="load-hint">相邻点线性变化；修改斜率会调整该段结束时间。时间从交流上电起算；稳态测试请在输出建立后变载。可编程模式使用本表，原理图固定电流保留。</p><p id="loadProgramError" role="alert"></p></div></section><div id="simulationMount"></div><div id="legacyParameterControls" hidden><h2>输入与负载</h2><div class="control-group"><label for="ind">L2 储能电感 / µH <output id="indVal"></output></label><input id="ind" type="range" min="1" max="100" step="1" value="47"><label for="cap">C2、C3 单只容量 / µF <output id="capVal"></output></label><input id="cap" type="range" min="47" max="10000" step="1" value="220"><label for="esr">并联电容等效 ESR / mΩ（假设） <output id="esrVal"></output></label><input id="esr" type="number" min="0" max="500" step="1" value="150"><details class="parameter-details" open><summary>反馈与芯片参数</summary><div class="control-group"><label for="rt">反馈上臂 / kΩ <output id="rtVal"></output></label><input id="rt" type="number" min=".1" max="5000" step="1" value="3000"><label for="rb">反馈下臂 / kΩ <output id="rbVal"></output></label><input id="rb" type="number" min="1" max="100" step="0.1" value="20"><label for="rs">R21 电流采样 / mΩ <output id="rsVal"></output></label><input id="rs" type="number" min="1" max="1000" step="1" value="50"><label for="rcs">R29 RI频率电阻 / kΩ <output id="rcsVal"></output></label><input id="rcs" type="number" min="10" max="200" step="0.1" value="3.9"><label for="eff">计算效率假设 / % <output id="effVal"></output></label><input id="eff" type="number" min="70" max="100" step="0.1" value="95"><label for="vcc">VIN 外部供电 / V <output id="vccVal"></output></label><input id="vcc" type="number" min="0" max="24" step="0.1" value="15"><label for="junctionTemp">结温假设 / ℃ <output id="junctionTempVal"></output></label><input id="junctionTemp" type="number" min="-45" max="180" step="1" value="25"><label>芯片频率版本</label><select id="variant"><option value="65000">EG12523A · 65kHz</option><option value="133000">EG12523B · 133kHz</option><option value="200000">EG12523C · 200kHz</option></select><label>BO/VCC 初始条件</label><select id="startMode"><option value="running">稳态已运行（保持迟滞）</option><option value="cold">冷启动阈值检查</option></select><p class="pfc-chip-info">RI频率公式 4300/RI(kΩ) kHz<br>VIN开启/关闭14/9V · Dmax典型46%<br>CS限流0.8V、过流1V<br>70ms过载延时采用用户确认值；当前不仿真时序</p><button id="export">导出参数</button></div></details></div></div></aside><article><div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="stat"><small>反馈设定输出</small><strong id="out">—</strong><em>由实际电阻分压计算</em></div><div class="stat"><small>输出负载电流</small><strong id="loadCurrentOut"></strong><em>稳态恒流负载设定</em></div><div class="stat"><small>输出负载功率</small><strong id="loadPowerOut"></strong><em>数值电压 × 负载电流</em></div><div class="stat"><small>输入电流 RMS 目标</small><strong id="irms">—</strong><em>RI电阻决定PWM周期</em></div><div class="stat"><small>电感最大峰值</small><strong id="peak">—</strong><em>数值稳态末4周期峰值</em></div><div class="stat"><small>母线低频纹波</small><strong id="ripple">—</strong><em>数值输出电压 · Vpp</em></div></div><details class="panel schematic-panel" id="schematicPanel" open><summary class="pad heading" style="margin:0"><h2>电路工作区 · 可编辑原理图</h2><span class="tag">点击收起 / 展开原理图</span></summary><div class="toolbar"><button data-add="R">＋ 电阻</button><button data-add="C" data-kind="electrolytic">＋ 电解电容</button><button data-add="C" data-kind="ceramic">＋ 贴片陶瓷电容</button><button data-add="L">＋ 电感</button><button data-add="D">＋ 肖特基二极管</button><button data-add="I">＋ 恒流负载</button><button data-add="V">＋ 直流电源</button><button data-add="Q" data-mos="N">＋ NMOS</button><button data-add="Q" data-mos="P">＋ PMOS</button><button data-add="G">＋ 地</button><button id="parallelC">一键并联电容</button><button id="parallelR">一键并联负载</button><button id="rotate" title="快捷键 R">旋转90° R</button><button id="mirrorX" title="左右镜像 X">左右镜像 X</button><button id="mirrorY" title="上下镜像 Y">上下镜像 Y</button><button id="wireMode">⌁ 连线 W</button><button id="remove">删除选中</button><button id="undo">撤销</button><button id="saveCircuit">保存布局与电路</button><label class="btn">导入电路<input id="importCircuit" type="file" accept=".json" hidden></label></div><div class="schematic-color-key"><span><i style="background:#20262d"></i>走线</span><span><i style="background:#364d63"></i>元件轮廓</span><span><i style="background:#386b94"></i>引脚</span><span>● 连接节点</span><span><i style="background:#d88e20"></i>选中</span></div><div class="canvas-tools"><span>拖动元件 · 点击引脚连线</span><button id="zoomOut">−</button><span id="zoomLevel">100%</span><button id="zoomIn">＋</button><label><input id="netLabels" type="checkbox">长信号线用网络名</label><label>网络标注 <select id="netNameTarget"><option>HO</option><option>LO</option><option>VS</option><option>FB</option><option>VIN</option><option>PGND</option></select></label><input id="netNameValue" type="text" value="HO" maxlength="24" aria-label="网络标注名称" style="width:90px"><button id="applyNetName">应用标注</button><button id="fitView">适应全部电路</button><button id="restoreDraft">恢复上次草稿</button></div><div class="editor-wrap"><svg id="editor" tabindex="0" viewBox="0 0 1100 510" aria-label="可编辑电路画布"></svg></div><div class="inspector"><span id="selection">单击元件后在此修改参数，点击应用或按Enter重新计算波形</span><input id="componentValue" type="number" min="0.000001" step="any" aria-label="元件数值"><span id="componentUnit"></span><select id="capacitorKind" aria-label="电容类型"><option value="electrolytic">电解电容（有极性）</option><option value="ceramic">贴片陶瓷（无极性）</option></select><label>二极管类型（符号） <select id="diodeKind"><option value="standard">普通二极管</option><option value="schottky">肖特基二极管</option><option value="zener">稳压管</option><option value="tvs">TVS（单向）</option><option value="tvs-bi">TVS（双向）</option></select></label><label>MOS沟道（符号） <select id="mosKind" disabled><option value="N">NMOS</option><option value="P">PMOS</option></select></label><label>标注位置 <select id="labelPosition"><option value="auto">自动</option><option value="top">元件上方</option><option value="bottom">元件下方</option><option value="left">元件左侧</option><option value="right">元件右侧</option></select></label><label>位号 / 值 <select id="labelLayout"><option value="stack">上下排列</option><option value="inline">左右排列</option></select></label><label>导线类型 <select id="wireWidth" disabled><option value="2" selected>信号线（细）</option><option value="4">功率线（粗）</option></select></label><button id="applyValue">应用参数</button><button id="cancelWire">取消连线</button></div><p class="editor-help" id="editorHelp">连线模式：依次点击两个空心引脚。导线交叉不自动相连；连接到同一引脚即为同一节点。</p><p class="notice">整图瞬态求解实验版：波形从交流上电、VIN启动、OUT/VCC建立开始记录。光耦/431及驱动阈值含等效假设，闭环精度与步长收敛仍待校准。</p><div id="netStatus" class="notice"></div></details><div class="panel scope"><div class="heading"><h2>同步多通道示波器 <span id="mode" style="color:#a5cef0;font-size:12px"></span></h2><button id="foldSchematic">收起原理图</button></div><div class="tools"><button id="timeLine" class="active">工频视图</button><button id="timeSwitch">开关周期放大</button><label>时间档位 <input id="timeScale" type="number" value="2" min="0.1" max="200" step="0.1" style="width:70px"> <span id="timeScaleUnit">ms/div</span>（10格）</label><label>显示 <input id="visibleCycles" type="number" value="1" min="0.1" step="1" style="width:75px"> <span id="cycleUnit">个工频周期</span></label><button id="fewerCycles">少看一半</button><button id="moreCycles">多看一倍</button><span id="timeWindow">总时间窗 20 ms</span><label>工频相位 <input id="phase" type="number" value="90" min="5" max="175" step="1" style="width:65px"> °</label><label>电流量程 <select id="currentRange"><option value="10">±10A</option><option value="20" selected>±20A</option><option value="25">±25A</option><option value="30">±30A</option></select></label><label>纹波 <select id="rippleRange"><option value="0.5">±0.5V</option><option value="10">±10V</option><option value="20" selected>±20V</option><option value="50">±50V</option></select></label></div><div class="tools" style="border-top:1px solid #33475c;padding-top:10px"><label>工具 <select id="scopeTool"><option value="pan">拖动平移</option><option value="zoom">框选放大</option></select></label><label>X 起点 <input id="axisXMin" type="number" step="any" value="0" style="width:90px"></label><label>终点 <input id="axisXMax" type="number" step="any" value="20" style="width:90px"> <span id="axisXUnit">ms</span></label><span hidden aria-hidden="true"><label>Y 轴 <select id="axisYGroup"><option value="A" selected>电流 / A</option><option value="V">功率级电压 / V</option><option value="W">负载功率 / W</option><option value="V·驱动">MOS驱动 / V</option><option value="V·控制">控制电压 / V</option><option value="V·AC">交流纹波 / V</option></select></label><label>下限 <input id="axisYMin" type="number" step="any" value="-20" style="width:75px"></label><label>上限 <input id="axisYMax" type="number" step="any" value="20" style="width:75px"></label></span><button id="applyAxes">应用时间范围</button><button id="autoYAxes">纵轴自动适应</button><button id="resetAxes">复位坐标轴</button><span id="axisError" style="color:#ffb78c"></span></div><div class="tools" id="wavePresets"><span>波形视图</span><button data-wave-preset="typical">典型波形</button><button data-wave-preset="startup">启动与保护</button><button data-wave-preset="switch">稳态开关</button><span style="font-size:12px">点击各栏顶部信号符号显示或隐藏曲线</span></div><div id="channelButtons" hidden><button data-channel="DRV">OUT</button></div><svg id="pfcWave" viewBox="0 0 1000 450" role="img" aria-label="EG12523同步波形"></svg><p id="pfcReadout"></p><div id="magneticSummary" style="margin:10px 20px;padding:10px 12px;border:1px solid #3b5367;border-radius:7px;color:#a8bfd2;font-size:11px;line-height:1.8"></div><div class="legend" id="pfcLegend" style="flex-wrap:wrap;line-height:1.7"></div></div><div id="notice" class="notice"></div></article></div><div class="foot">整图瞬态求解实验版，依据实际电路连接运行；芯片/光耦/431采用可调整的等效行为模型，结果仍需步长与实测校核。</div></div>
+<div id="forward-simulation" role="tabpanel" aria-labelledby="forward-simulation-tab"><div class="layout"><aside class="panel pad eg-sidebar"><div class="sidebar-title"><span class="eyebrow">SIMULATION</span><h2>输入与运行</h2></div><label class="setting-row" for="vin"><span>AC 电压 <small>Vac RMS</small></span><input id="vin" type="number" value="220" min="0" max="1000" step="1"><output id="vinVal" hidden></output></label><label class="setting-row" for="freqLine"><span>电网频率 <small>Hz</small></span><input id="freqLine" type="number" value="50" min="45" max="65" step="1"><output id="freqLineVal" hidden></output></label><section class="program-load"><label class="setting-row" for="loadMode"><span>负载方式</span><select id="loadMode"><option value="fixed">固定电流</option><option value="program">可编程电流</option></select></label><label class="setting-row" id="fixedLoadRow" for="load"><span>负载电流 <small>A</small></span><input id="load" type="number" value="17" min="0" max="1000" step="0.1"><output id="loadVal" hidden></output></label><div id="loadProgramEditor" hidden><div class="load-table-scroll"><table class="load-table"><thead><tr><th>时间 / s</th><th>电流 / A</th><th>斜率 / A/s</th><th></th></tr></thead><tbody id="loadProgramRows"></tbody></table></div><div class="load-table-actions"><button id="addLoadPoint" type="button">＋ 时间点</button><button id="loadExample" type="button">载入示例</button></div><p class="load-hint">相邻点线性变化；修改斜率会调整该段结束时间。时间从交流上电起算；稳态测试请在输出建立后变载。可编程模式使用本表，原理图固定电流保留。</p><p id="loadProgramError" role="alert"></p></div></section><div id="simulationMount"></div><div id="legacyParameterControls" hidden><h2>输入与负载</h2><div class="control-group"><label for="ind">L2 储能电感 / µH <output id="indVal"></output></label><input id="ind" type="range" min="1" max="100" step="1" value="47"><label for="cap">C2、C3 单只容量 / µF <output id="capVal"></output></label><input id="cap" type="range" min="47" max="10000" step="1" value="220"><label for="esr">并联电容等效 ESR / mΩ（假设） <output id="esrVal"></output></label><input id="esr" type="number" min="0" max="500" step="1" value="150"><details class="parameter-details" open><summary>反馈与芯片参数</summary><div class="control-group"><label for="rt">反馈上臂 / kΩ <output id="rtVal"></output></label><input id="rt" type="number" min=".1" max="5000" step="1" value="3000"><label for="rb">反馈下臂 / kΩ <output id="rbVal"></output></label><input id="rb" type="number" min="1" max="100" step="0.1" value="20"><label for="rs">R21 电流采样 / mΩ <output id="rsVal"></output></label><input id="rs" type="number" min="1" max="1000" step="1" value="50"><label for="rcs">R29 RI频率电阻 / kΩ <output id="rcsVal"></output></label><input id="rcs" type="number" min="10" max="200" step="0.1" value="3.9"><label for="eff">计算效率假设 / % <output id="effVal"></output></label><input id="eff" type="number" min="70" max="100" step="0.1" value="95"><label for="vcc">VIN 外部供电 / V <output id="vccVal"></output></label><input id="vcc" type="number" min="0" max="24" step="0.1" value="15"><label for="junctionTemp">结温假设 / ℃ <output id="junctionTempVal"></output></label><input id="junctionTemp" type="number" min="-45" max="180" step="1" value="25"><label>芯片频率版本</label><select id="variant"><option value="65000">EG12523A · 65kHz</option><option value="133000">EG12523B · 133kHz</option><option value="200000">EG12523C · 200kHz</option></select><label>BO/VCC 初始条件</label><select id="startMode"><option value="running">稳态已运行（保持迟滞）</option><option value="cold">冷启动阈值检查</option></select><p class="pfc-chip-info">RI频率公式 4300/RI(kΩ) kHz<br>VIN开启/关闭14/9V · Dmax典型46%<br>CS限流0.8V、过流1V<br>70ms过载延时采用用户确认值；当前不仿真时序</p><button id="export">导出参数</button></div></details></div></div></aside><article><div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="stat"><small>反馈设定输出</small><strong id="out">—</strong><em>由实际电阻分压计算</em></div><div class="stat"><small>输出负载电流</small><strong id="loadCurrentOut"></strong><em>稳态恒流负载设定</em></div><div class="stat"><small>输出负载功率</small><strong id="loadPowerOut"></strong><em>数值电压 × 负载电流</em></div><div class="stat"><small>输入电流 RMS 目标</small><strong id="irms">—</strong><em>RI电阻决定PWM周期</em></div><div class="stat"><small>电感最大峰值</small><strong id="peak">—</strong><em>数值稳态末4周期峰值</em></div><div class="stat"><small>母线低频纹波</small><strong id="ripple">—</strong><em>数值输出电压 · Vpp</em></div></div><details class="panel schematic-panel" id="schematicPanel" open><summary class="pad heading" style="margin:0"><h2>电路工作区 · 可编辑原理图</h2><span class="tag">点击收起 / 展开原理图</span></summary><div class="toolbar"><button data-add="R">＋ 电阻</button><button data-add="C" data-kind="electrolytic">＋ 电解电容</button><button data-add="C" data-kind="ceramic">＋ 贴片陶瓷电容</button><button data-add="L">＋ 电感</button><button data-add="D">＋ 肖特基二极管</button><button data-add="I">＋ 恒流负载</button><button data-add="V">＋ 直流电源</button><button data-add="Q" data-mos="N">＋ NMOS</button><button data-add="Q" data-mos="P">＋ PMOS</button><button data-add="G">＋ 地</button><button id="parallelC">一键并联电容</button><button id="parallelR">一键并联负载</button><button id="rotate" title="快捷键 R">旋转90° R</button><button id="mirrorX" title="左右镜像 X">左右镜像 X</button><button id="mirrorY" title="上下镜像 Y">上下镜像 Y</button><button id="wireMode">⌁ 连线 W</button><button id="remove">删除选中</button><button id="undo">撤销</button><button id="saveCircuit">保存布局与电路</button><label class="btn">导入电路<input id="importCircuit" type="file" accept=".json" hidden></label></div><div class="schematic-color-key"><span><i style="background:#20262d"></i>走线</span><span><i style="background:#364d63"></i>元件轮廓</span><span><i style="background:#386b94"></i>引脚</span><span>● 连接节点</span><span><i style="background:#d88e20"></i>选中</span></div><div class="canvas-tools"><span>拖动元件 · 点击引脚连线</span><button id="zoomOut">−</button><span id="zoomLevel">100%</span><button id="zoomIn">＋</button><label><input id="netLabels" type="checkbox">长信号线用网络名</label><label>网络标注 <select id="netNameTarget"><option>HO</option><option>LO</option><option>VS</option><option>FB</option><option>VIN</option><option>PGND</option></select></label><input id="netNameValue" type="text" value="HO" maxlength="24" aria-label="网络标注名称" style="width:90px"><button id="applyNetName">应用标注</button><button id="fitView">适应全部电路</button><button id="restoreDraft">恢复上次草稿</button></div><div class="editor-wrap"><svg id="editor" tabindex="0" viewBox="0 0 1100 510" aria-label="可编辑电路画布"></svg></div><div class="inspector"><span id="selection">单击元件后在此修改参数，点击应用或按Enter重新计算波形</span><input id="componentValue" type="number" min="0.000001" step="any" aria-label="元件数值"><span id="componentUnit"></span><select id="capacitorKind" aria-label="电容类型"><option value="electrolytic">电解电容（有极性）</option><option value="ceramic">贴片陶瓷（无极性）</option></select><label>二极管类型（符号） <select id="diodeKind"><option value="standard">普通二极管</option><option value="schottky">肖特基二极管</option><option value="zener">稳压管</option><option value="tvs">TVS（单向）</option><option value="tvs-bi">TVS（双向）</option></select></label><label>MOS沟道（符号） <select id="mosKind" disabled><option value="N">NMOS</option><option value="P">PMOS</option></select></label><label>标注位置 <select id="labelPosition"><option value="auto">自动</option><option value="top">元件上方</option><option value="bottom">元件下方</option><option value="left">元件左侧</option><option value="right">元件右侧</option></select></label><label>位号 / 值 <select id="labelLayout"><option value="stack">上下排列</option><option value="inline">左右排列</option></select></label><label>导线类型 <select id="wireWidth" disabled><option value="2" selected>信号线（细）</option><option value="4">功率线（粗）</option></select></label><button id="applyValue">应用参数</button><button id="cancelWire">取消连线</button></div><p class="editor-help" id="editorHelp">连线模式：依次点击两个空心引脚。导线交叉不自动相连；连接到同一引脚即为同一节点。</p><p class="notice">整图瞬态求解实验版：波形从交流上电、VIN启动、OUT/VCC建立开始记录。光耦/431及驱动阈值含等效假设，闭环精度与步长收敛仍待校准。</p><div id="netStatus" class="notice"></div></details><div class="panel scope"><div class="heading"><h2>同步多通道示波器 <span id="mode" style="color:#a5cef0;font-size:12px"></span></h2><button id="foldSchematic">收起原理图</button></div><style>
+#pfcWave .scope-symbols{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin}
+#pfcWave .scope-symbols button{flex:0 0 auto;white-space:nowrap;padding:4px 7px}
+#pfcWave [data-scope-resize]:focus-visible .scope-resize-hit,
+#pfcWave [data-scope-resize]:hover .scope-resize-hit{fill:#7ebaf327}
+.forward-cursor-card{box-sizing:border-box;max-width:100%;padding:2px 5px;white-space:nowrap;border:1px solid #617c95;border-radius:5px;background:#142338ed;color:#e2eef8;font:11px/1.4 "Microsoft YaHei",sans-serif;font-variant-numeric:tabular-nums}
+.forward-cursor-card strong{color:#ffd36d}
+.panel.scope:has(#forwardScopeBar){overflow:visible}
+#forwardCursorSummary{flex-basis:100%;font:11px/1.55 "Microsoft YaHei",sans-serif;color:#dce9f5;font-variant-numeric:tabular-nums}
+#forwardScopeBar{position:sticky;top:var(--forward-scope-top,0px);z-index:19;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 12px;background:#1b2d40;border-bottom:1px solid #40566d}
+#forwardScopeBar .scope-action-group{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+#forwardScopeBar .scope-action-group+.scope-action-group{border-left:1px solid #536981;padding-left:8px}
+#forwardScopeBar button:disabled{opacity:.45;cursor:default}
+#forwardScopeRange{margin-left:auto;font-size:12px;color:#c4d7e7;font-variant-numeric:tabular-nums}
+.scope.hide-forward-guide [data-hover-cursor]{display:none}
+#forwardScopeBar button,#forwardScopeBar select,#forwardScopeBar input{box-sizing:border-box;min-height:27px;height:auto;padding:3px 7px;color:#dce9f5;background:#172738;border:1px solid #536981;border-radius:4px;font-size:12px}
+#forwardScopeBar button.active,#forwardScopeBar button[aria-pressed=true],#forwardScopeBar button[aria-expanded=true]{background:#2e6f9f;border-color:#79b3dc;color:white}
+#forwardScopeBar [hidden],#wavePresets[hidden]{display:none!important}
+#forwardScopeBar select{max-width:min(17rem,100%)}
+#forwardScopeRange{font-size:11px}
+#forwardScopeOptions{flex-basis:100%;border-top:1px solid #40566d;padding-top:4px;color:#c4d7e7;font-size:12px}
+#forwardScopeOptions>div{margin:2px 0}
+#forwardScopeOptions span{flex-wrap:wrap}
+#forwardScopeOptions #commonEdgeChannel{max-width:min(15rem,50vw)}
+</style>
+<div id="forwardScopeBar" role="group" aria-label="示波器快捷操作">
+  <div id="forwardScopeView" class="scope-action-group" role="group" aria-label="时间和量程"></div>
+  <div class="scope-action-group" role="group" aria-label="操作模式">
+    <button type="button" data-scope-action="pan" aria-pressed="true">平移</button>
+    <button type="button" data-scope-action="zoom" aria-pressed="false">框选</button>
+    <button type="button" data-scope-action="guide" aria-pressed="true">定位线</button>
+  </div>
+  <div id="forwardScopeMeasure" class="scope-action-group" role="group" aria-label="测量与对比"></div>
+  <output id="forwardScopeRange"></output>
+  <output id="forwardCursorSummary" hidden></output>
+  <div id="forwardScopeOptions" hidden>
+    <div id="forwardCursorOptions" hidden></div>
+    <div id="forwardEdgeOptions" hidden></div>
+  </div>
+</div>
+<div class="tools"><button id="timeLine" class="active">工频视图</button><button id="timeSwitch">开关周期放大</button><label>时间档位 <input id="timeScale" type="number" value="2" min="0.1" max="200" step="0.1" style="width:70px"> <span id="timeScaleUnit">ms/div</span>（10格）</label><label>显示 <input id="visibleCycles" type="number" value="1" min="0.1" step="1" style="width:75px"> <span id="cycleUnit">个工频周期</span></label><button id="fewerCycles">少看一半</button><button id="moreCycles">多看一倍</button><span id="timeWindow">总时间窗 20 ms</span><label>工频相位 <input id="phase" type="number" value="90" min="5" max="175" step="1" style="width:65px"> °</label><label>电流量程 <select id="currentRange"><option value="10">±10A</option><option value="20" selected>±20A</option><option value="25">±25A</option><option value="30">±30A</option></select></label><label>纹波 <select id="rippleRange"><option value="0.5">±0.5V</option><option value="10">±10V</option><option value="20" selected>±20V</option><option value="50">±50V</option></select></label></div><div class="tools" style="border-top:1px solid #33475c;padding-top:10px"><label>工具 <select id="scopeTool"><option value="pan">拖动平移</option><option value="zoom">框选放大</option></select></label><label>X 起点 <input id="axisXMin" type="number" step="any" value="0" style="width:90px"></label><label>终点 <input id="axisXMax" type="number" step="any" value="20" style="width:90px"> <span id="axisXUnit">ms</span></label><span hidden aria-hidden="true"><label>Y 轴 <select id="axisYGroup"><option value="A" selected>电流 / A</option><option value="V">功率级电压 / V</option><option value="W">负载功率 / W</option><option value="V·驱动">MOS驱动 / V</option><option value="V·控制">控制电压 / V</option><option value="V·AC">交流纹波 / V</option></select></label><label>下限 <input id="axisYMin" type="number" step="any" value="-20" style="width:75px"></label><label>上限 <input id="axisYMax" type="number" step="any" value="20" style="width:75px"></label></span><button id="applyAxes">应用时间范围</button><button id="autoYAxes">纵轴自动适应</button><button id="resetAxes">复位坐标轴</button><span id="axisError" style="color:#ffb78c"></span></div><div id="channelButtons" hidden><button data-channel="DRV">OUT</button></div><svg id="pfcWave" viewBox="0 0 1000 450" role="img" aria-label="EG12523同步波形"></svg><p id="pfcReadout"></p><div id="magneticSummary" style="margin:10px 20px;padding:10px 12px;border:1px solid #3b5367;border-radius:7px;color:#a8bfd2;font-size:11px;line-height:1.8"></div><div class="legend" id="pfcLegend" style="flex-wrap:wrap;line-height:1.7"></div></div><div id="notice" class="notice"></div></article></div><div class="foot">整图瞬态求解实验版，依据实际电路连接运行；芯片/光耦/431采用可调整的等效行为模型，结果仍需步长与实测校核。</div></div>
 <div id="forward-design" role="tabpanel" aria-labelledby="forward-design-tab" data-source="../v2/EG12523-transformer.html?embedded=1" hidden></div>
 </main>
 <script>
@@ -57,6 +97,118 @@
   });
 })();
 </script>
-<script src="eg12523-editor.js?v=customer-20261112-6"></script><script src="eg12523-core.js?v=customer-20261112-6"></script><script src="editor-ux.js?v=customer-20261112-6"></script><script src="wire-edit.js?v=customer-20261112-6"></script><script src="eg12523-transient.js?v=customer-20261112-6"></script><script src="eg12523-default-cache.js?v=customer-20261112-6" defer></script><script src="eg12523-app.js?v=customer-20261112-6"></script><script src="shared-lab.js?v=customer-20261112-6"></script><script src="customer-ui.js?v=customer-20261112-6"></script><script src="eg12523-user.js?v=customer-20261112-6"></script></body></html>
+<script src="eg12523-editor.js?v=eg12523-scope-20261126-1"></script><script src="eg12523-core.js?v=customer-20261112-6"></script><script src="editor-ux.js?v=customer-20261112-6"></script><script src="wire-edit.js?v=customer-20261112-6"></script><script src="eg12523-transient.js?v=customer-20261112-6"></script><script src="eg12523-default-cache.js?v=customer-20261112-6" defer></script><script src="eg12523-app.js?v=eg12523-scope-20261126-1"></script><script src="shared-lab.js?v=eg12523-scope-20261126-1"></script><script src="customer-ui.js?v=customer-20261112-6"></script><script src="eg12523-user.js?v=customer-20261112-6"></script><script>
+(function bootForwardScopeToolbar() {
+  const bar = document.getElementById('forwardScopeBar');
+  const wave = document.getElementById('pfcWave');
+  const scope = wave.closest('.scope');
+  const tool = document.getElementById('scopeTool');
+  const range = document.getElementById('forwardScopeRange');
+  const actions = Object.fromEntries([...bar.querySelectorAll('[data-scope-action]')].map(button => [button.dataset.scopeAction, button]));
+  function syncButtons() {
+    for (const key of ['pan', 'zoom']) actions[key].setAttribute('aria-pressed', String(tool.value === key));
+  }
+
+  function refreshToolbar() {
+    const axes = pfcScopeAxes;
+    const ready = Boolean(pfcLast && axes?.groups.length);
+    const unit = pfcTime === 'line' ? 'ms' : 'µs';
+    const scale = unit === 'ms' ? 1000 : 1e6;
+    const format = x => Number((x * scale).toPrecision(6));
+    range.textContent = ready ? format(axes.start) + ' – ' + format(axes.start + axes.span) + ' ' + unit +
+      ' · ' + format(axes.span / 10) + ' ' + unit + '/格' : '等待波形';
+    const lineView = document.getElementById('timeLine');
+    const cycleView = document.getElementById('timeSwitch');
+    lineView.disabled = cycleView.disabled = document.getElementById('autoYAxes').disabled = !ready;
+    lineView.setAttribute('aria-pressed', String(pfcTime === 'line'));
+    cycleView.setAttribute('aria-pressed', String(pfcTime === 'switch'));
+  }
+
+  const handlers = {
+    pan: () => { tool.value = 'pan'; syncButtons(); },
+    zoom: () => { tool.value = 'zoom'; syncButtons(); },
+    guide: () => actions.guide.setAttribute('aria-pressed', String(!scope.classList.toggle('hide-forward-guide'))),
+  };
+
+  tool.addEventListener('change', syncButtons);
+  for (const [name, handler] of Object.entries(handlers)) {
+    actions[name].addEventListener('click', handler);
+  }
+
+  const view = document.getElementById('forwardScopeView');
+  for (const [id, label] of [['timeLine', '全记录'], ['timeSwitch', '稳态波形'], ['autoYAxes', 'Y 适合']]) {
+    const button = document.getElementById(id);
+    if (id !== 'autoYAxes') button.classList.remove('active');
+    button.textContent = label;
+    view.append(button);
+  }
+
+  const measure = document.getElementById('forwardScopeMeasure');
+  const options = document.getElementById('forwardScopeOptions');
+  const cursorOptions = document.getElementById('forwardCursorOptions');
+  const edgeOptions = document.getElementById('forwardEdgeOptions');
+  const cursorToggle = scope.querySelector('[data-forward-cursor-toggle]');
+  const compare = document.getElementById('compareToggle');
+  const clear = document.getElementById('compareClear');
+  const oldTools = compare.parentElement;
+
+  function syncOptions() {
+    options.hidden = cursorOptions.hidden && edgeOptions.hidden;
+  }
+  const cursorControls = cursorToggle.nextElementSibling;
+  cursorOptions.append(cursorControls);
+  cursorToggle.setAttribute('aria-controls', cursorOptions.id);
+  cursorToggle.setAttribute('aria-expanded', 'false');
+  cursorToggle.addEventListener('click', () => {
+    cursorOptions.hidden = cursorControls.style.display === 'none';
+    cursorToggle.setAttribute('aria-expanded', String(!cursorOptions.hidden));
+    syncOptions();
+  });
+
+  const edgeToggle = document.createElement('button');
+  edgeToggle.type = 'button';
+  edgeToggle.textContent = '沿触发';
+  edgeToggle.setAttribute('aria-controls', edgeOptions.id);
+  edgeToggle.setAttribute('aria-expanded', 'false');
+  edgeOptions.append(document.getElementById('commonEdgeChannel').closest('label').parentElement);
+  edgeToggle.addEventListener('click', () => {
+    edgeOptions.hidden = !edgeOptions.hidden;
+    edgeToggle.setAttribute('aria-expanded', String(!edgeOptions.hidden));
+    wave.dispatchEvent(new CustomEvent('forward-edge-toggle', {detail: !edgeOptions.hidden}));
+    syncOptions();
+  });
+
+  compare.title = '对比上一次波形，虚线表示上一次结果';
+  const compactCompare = () => {
+    const active = compare.textContent.endsWith('显示');
+    compare.textContent = '波形对比';
+    compare.setAttribute('aria-pressed', String(active));
+  };
+  compare.addEventListener('click', compactCompare);
+  compactCompare();
+  measure.append(edgeToggle, cursorToggle, compare, clear);
+  const lockBaseline = document.getElementById('lockBaseline');
+  if (lockBaseline) measure.append(lockBaseline);
+  oldTools.style.display = 'none';
+
+  const metrics = scope.closest('article')?.querySelector('.stats');
+  if (metrics) {
+    const syncStickyOffset = () => {
+      const style = getComputedStyle(metrics);
+      const offset = style.position === 'sticky'
+        ? metrics.getBoundingClientRect().height + (parseFloat(style.top) || 0)
+        : 0;
+      bar.style.setProperty('--forward-scope-top', offset + 'px');
+    };
+    new ResizeObserver(syncStickyOffset).observe(metrics);
+    window.addEventListener('resize', syncStickyOffset);
+    syncStickyOffset();
+  }
+  wave.addEventListener('forward-scope-rendered', refreshToolbar);
+  refreshToolbar();
+  syncButtons();
+})();
+</script>
+</body></html>
 
 

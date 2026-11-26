@@ -13,12 +13,51 @@ function partTransform(p){return `scale(${p.mirrorX?-1:1} ${p.mirrorY?-1:1}) rot
 function readableSymbol(p,shape){return shape.replace(/<text([^>]*)>(.*?)<\/text>/g,(_,attrs,body)=>{let x=Number(attrs.match(/\bx="([^"]+)"/)?.[1]??0),y=Number(attrs.match(/\by="([^"]+)"/)?.[1]??0),a=attrs.match(/text-anchor="([^"]+)"/)?.[1]??'start';let pos=partPoint(p,x,y),right=partPoint(p,1,0);if(a!=='middle'&&(right[0]<0||right[0]===0&&right[1]<0))a=a==='start'?'end':'start';attrs=attrs.replace(/\s(?:x|y|text-anchor)="[^"]*"/g,'');return `<text${attrs} transform="rotate(${-partAngle(p)}) scale(${p.mirrorX?-1:1} ${p.mirrorY?-1:1})" x="${pos[0]}" y="${pos[1]}" text-anchor="${a}">${body}</text>`})}
 function transformedSymbol(p,shape){let body=readableSymbol(p,shape);if(['R','C','L','D'].includes(p.type))body=`<g transform="scale(1 1.5)">${body}</g>`;return `<g transform="${partTransform(p)}">${body}</g>`}
 // Shared axis editing and navigation for every chip page.
-function scopeAxisTicks(g){let span=g.max-g.min,factor=span<1?10**Math.ceil(-Math.log10(Math.max(span,1e-12))):1,extent=span*factor,raw=extent/5,power=10**Math.floor(Math.log10(Math.max(raw,1))),step=Math.max(1,[1,2,5,10].map(n=>n*power).find(n=>n>=raw)??10*power),ticks=[];for(let v=Math.ceil(g.min*factor/step)*step;v<=g.max*factor+step*1e-8&&ticks.length<12;v+=step)ticks.push({value:v/factor,label:String(Math.round(v))});return {ticks,factor,caption:factor===1?g.unit:`${g.unit} ×10^${-Math.round(Math.log10(factor))}`}}
-function scopeYAxis(g,top,left,bottom){let info=scopeAxisTicks(g),out=`<rect data-axis-select="y" data-axis-unit="${g.unit}" x="0" y="${top}" width="${left-2}" height="${bottom-top}" fill="transparent" style="cursor:ns-resize"/><text data-axis-select="y" data-axis-unit="${g.unit}" x="${left}" y="${top-10}" fill="#bfd3e2" font-size="12">${info.caption} · 点击纵轴后滚轮缩放</text>`;for(let tick of info.ticks){let y=bottom-(tick.value-g.min)/(g.max-g.min)*(bottom-top);out+=`<path d="M${left} ${y}H${left===75?970:965}" stroke="#2b3b50"/>`;if(y>top+15&&y<bottom-15)out+=`<text x="${left-9}" y="${y+4}" fill="#9fb8cb" text-anchor="end" font-size="11" pointer-events="none">${tick.label}</text>`}for(let [bound,y]of [['max',top-10],['min',bottom-10]]){let value=Number(g[bound].toPrecision(4));out+=`<foreignObject x="1" y="${y}" width="${left-5}" height="23"><input xmlns="http://www.w3.org/1999/xhtml" type="number" step="any" data-axis-bound="${bound}" data-axis-unit="${g.unit}" value="${value}" title="${g.unit} ${bound==='max'?'最高':'最低'}值；输入后回车生效" aria-label="${g.unit} ${bound==='max'?'最高':'最低'}值" style="width:100%;height:22px;background:#203249;color:#d8e7f4;border:1px solid #58728a;border-radius:3px;font:11px Arial;padding:1px 3px;box-sizing:border-box"/></foreignObject>`}out+=`<rect data-axis-select="x" x="${left}" y="${bottom+1}" width="${(left===75?970:965)-left}" height="18" fill="transparent" style="cursor:ew-resize"/>`;return out}
-function installScopeAxisInteraction(wave,config){let axes=config.axes(),oldDown=wave.onpointerdown,oldWheel=wave.onwheel;if(!axes)return;let point=e=>{let p=wave.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(wave.getScreenCTM().inverse())},groupAt=p=>axes.groups.some(g=>g.top!==undefined)?axes.groups.find(g=>p.y>=g.top&&p.y<=g.top+140):axes.groups[Math.floor((p.y-config.top)/config.row)],selectAxis=(kind,unit)=>{wave.scopeAxisFocus={kind,unit};wave.querySelectorAll('[data-axis-select]').forEach(n=>{if(n.tagName?.toLowerCase()==='rect')n.setAttribute('fill',n.dataset.axisSelect===kind&&(kind==='x'||n.dataset.axisUnit===unit)?'#74bafa18':'transparent')})};
- wave.querySelectorAll('[data-axis-bound]').forEach(input=>{input.onpointerdown=e=>e.stopPropagation();input.onwheel=e=>{e.preventDefault();e.stopPropagation();let g=axes.groups.find(g=>g.unit===input.dataset.axisUnit);if(g){let center=(g.min+g.max)/2,half=(g.max-g.min)/2*(e.deltaY>0?1.25:.8);selectAxis('y',g.unit);config.setY(g.unit,{min:center-half,max:center+half});config.refresh()}};input.onchange=()=>{let group=axes.groups.find(g=>g.unit===input.dataset.axisUnit),v=Number(input.value);if(!group||input.value.trim()===''||!Number.isFinite(v)||input.dataset.axisBound==='min'&&v>=group.max||input.dataset.axisBound==='max'&&v<=group.min){input.style.borderColor='#ff9977';input.title='上限必须大于下限';return}config.setY(group.unit,{min:input.dataset.axisBound==='min'?v:group.min,max:input.dataset.axisBound==='max'?v:group.max});config.refresh()};input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();input.onchange()}else if(e.key==='Escape'){input.value=String(axes.groups.find(g=>g.unit===input.dataset.axisUnit)[input.dataset.axisBound]);input.blur()}}});
+function forwardAxisDisplay(group) {
+  const base = group.axisUnit ?? group.unit;
+  const magnitude = Math.max(Math.abs(group.min), Math.abs(group.max));
+  if (magnitude > 0 && magnitude < 1 && ['V', 'A'].includes(base)) {
+    if (magnitude >= 1e-3) return {factor:1e3, label:'m' + base};
+    if (magnitude >= 1e-6) return {factor:1e6, label:'µ' + base};
+    return {factor:1e9, label:'n' + base};
+  }
+  return {factor:1, label:base};
+}
+
+function scopeAxisTicks(group) {
+  const {factor} = forwardAxisDisplay(group);
+  const min = group.min * factor, max = group.max * factor;
+  const desired = (max - min) / 5;
+  if (!(desired > 0) || !Number.isFinite(desired)) return [];
+  const power = 10 ** Math.floor(Math.log10(desired));
+  const step = ([1, 2, 5, 10].find(n => n * power >= desired) ?? 10) * power;
+  if (!step) return [];
+  const first = Math.ceil(min / step);
+  const digits = Math.max(0, Math.min(12, Math.ceil(-Math.log10(step))));
+  const ticks = [];
+  for (let i = 0; i < 12; i++) {
+    const value = (first + i) * step;
+    if (value > max) break;
+    ticks.push({value:value / factor, label:String(Number(value.toFixed(digits)))});
+  }
+  return ticks;
+}
+function scopeYAxis(group, top, left, bottom) {
+  const ticks = scopeAxisTicks(group);
+  const middle = (top + bottom) / 2;
+  const {label} = forwardAxisDisplay(group);
+  let svg = `<rect data-axis-select="y" data-axis-unit="${group.unit}" x="0" y="${top}" width="${left-2}" height="${bottom-top}" fill="transparent" style="cursor:ns-resize"><title>纵轴 ${label} · 滚轮缩放</title></rect>
+    <text data-y-unit x="38" y="${middle}" transform="rotate(-90 38 ${middle})" text-anchor="middle" dominant-baseline="middle" fill="#bfd3e2" font-size="12" pointer-events="none">${label}</text>`;
+  for (const tick of ticks) {
+    const y = bottom - (tick.value - group.min) / (group.max - group.min) * (bottom - top);
+    svg += `<path d="M${left} ${y}H965" stroke="#2b3b50"/>
+      <text x="${left-9}" y="${y}" dominant-baseline="middle" text-anchor="end" fill="#9fb8cb" font-size="11" pointer-events="none">${tick.label}</text>`;
+  }
+  return svg + `<rect data-axis-select="x" x="${left}" y="${bottom+1}" width="${965-left}" height="17" fill="transparent" style="cursor:ew-resize"/>`;
+}
+function installScopeAxisInteraction(wave,config){let axes=config.axes(),oldDown=wave.onpointerdown,oldWheel=wave.onwheel;if(!axes)return;let point=e=>{let p=wave.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(wave.getScreenCTM().inverse())},groupAt=p=>axes.groups.some(g=>g.top!==undefined)?axes.groups.find(g=>p.y>=g.top&&p.y<=g.top+g.height):axes.groups[Math.floor((p.y-config.top)/config.row)],selectAxis=(kind,unit)=>{wave.scopeAxisFocus={kind,unit};wave.querySelectorAll('[data-axis-select]').forEach(n=>{if(n.tagName?.toLowerCase()==='rect')n.setAttribute('fill',n.dataset.axisSelect===kind&&(kind==='x'||n.dataset.axisUnit===unit)?'#74bafa18':'transparent')})};
  if(wave.scopeAxisFocus)selectAxis(wave.scopeAxisFocus.kind,wave.scopeAxisFocus.unit);wave.onpointerdown=e=>{if(e.target.closest?.('[data-wave-channel],[data-wave-fold]'))return;let target=e.target?.closest?.('[data-axis-select]');if(target){e.preventDefault();selectAxis(target.dataset.axisSelect,target.dataset.axisUnit);return}selectAxis('x');if(e.ctrlKey){let tool=el('scopeTool'),previous=tool.value;tool.value='zoom';oldDown?.(e);tool.value=previous}else oldDown?.(e)};
- wave.onwheel=e=>{if(e.target.closest?.('[data-wave-channel],[data-wave-fold]'))return;let p=point(e),group=groupAt(p),focus=wave.scopeAxisFocus,isY=!e.shiftKey&&(p.x<config.left||focus?.kind==='y'),axisTarget=e.target?.closest?.('[data-axis-select]');if(axisTarget?.dataset.axisSelect==='x'){selectAxis('x');isY=false}if(isY){let g=axes.groups.find(g=>g.unit===focus?.unit)??group;if(!g)return;e.preventDefault();let index=axes.groups.indexOf(g),top=g.top??config.top+index*config.row,ratio=Math.max(0,Math.min(1,1-(p.y-top)/140)),scale=e.deltaY>0?1.25:.8,center=g.min+ratio*(g.max-g.min);config.setY(g.unit,{min:center-(center-g.min)*scale,max:center+(g.max-center)*scale});config.refresh()}else oldWheel?.(e)};
+ wave.onwheel=e=>{if(e.target.closest?.('[data-wave-channel],[data-wave-fold]'))return;let p=point(e),group=groupAt(p),focus=wave.scopeAxisFocus,isY=!e.shiftKey&&(p.x<config.left||focus?.kind==='y'),axisTarget=e.target?.closest?.('[data-axis-select]');if(axisTarget?.dataset.axisSelect==='x'){selectAxis('x');isY=false}if(isY){let g=axisTarget?.dataset.axisSelect==='y'?axes.groups.find(g=>g.unit===axisTarget.dataset.axisUnit):p.x<config.left?group:axes.groups.find(g=>g.unit===focus?.unit)??group;if(!g)return;e.preventDefault();selectAxis('y',g.unit);let index=axes.groups.indexOf(g),top=g.top??config.top+index*config.row,ratio=Math.max(0,Math.min(1,1-(p.y-top)/g.height)),scale=e.deltaY>0?1.25:.8,center=g.min+ratio*(g.max-g.min);config.setY(g.unit,{min:center-(center-g.min)*scale,max:center+(g.max-center)*scale});config.refresh()}else oldWheel?.(e)};
 }
 function loadSymbol(p){return `<g class="load-symbol" data-current-from="a" data-current-to="b" transform="${partTransform(p)}"><circle r="22" fill="white"/><path d="M-35 0h13m44 0h13M-12 0h24m-6 -6l6 6-6 6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`}
 function voltageSourceSymbol(p){let sign=(x,char)=>{let [px,py]=partPoint(p,x,0);return `<text x="${px}" y="${py}" text-anchor="middle" dominant-baseline="central" fill="#344f60" stroke="none" font-size="17" font-family="Arial,sans-serif">${char}</text>`};return `<g class="voltage-source" data-source="${p.type==='A'?'AC':'DC'}"><g transform="${partTransform(p)}"><circle r="24" fill="white"/><path d="M-35 0h11m48 0h11" fill="none"/></g>${p.type==='A'?'<path class="source-sine" d="M-14 0C-10 -13 -4 -13 0 0S10 13 14 0" fill="none" stroke-linecap="round"/>':sign(-11,'+')+sign(11,'−')}</g>`}
