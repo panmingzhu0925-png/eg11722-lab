@@ -11,7 +11,7 @@ async function setup(){
  let selectedCore=null,requiredAP=NaN,coreNotice='',modelChoices='';const usableCores=cores.filter(core=>core[1]);
  function cellNumber(cell){const text=cell.textContent.trim();return /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)?Number(text):NaN}
  function add(target,ids){for(const id of ids){
-  const cell=document.querySelector('#input-'+id);cell.contentEditable='plaintext-only';cell.tabIndex=0;cell.spellcheck=false;cell.setAttribute('role','textbox');cell.setAttribute('aria-label',labels[id]);cell.setAttribute('inputmode',[22,24].includes(id)?'numeric':'decimal');
+  const host=document.querySelector('#input-'+id),cell=document.createElement('span');cell.id=host.id;host.removeAttribute('id');host.classList.remove('editable');cell.className='editable';host.append(cell);cell.contentEditable='plaintext-only';cell.tabIndex=0;cell.spellcheck=false;cell.setAttribute('role','textbox');cell.setAttribute('aria-label',labels[id]);cell.setAttribute('inputmode',[22,24].includes(id)?'numeric':'decimal');
   cell.onfocus=()=>cell.dataset.beforeEdit=cell.textContent;
   cell.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();cell.blur()}if(event.key==='Escape'){event.preventDefault();cell.textContent=cell.dataset.beforeEdit;cell.dispatchEvent(new Event('input',{bubbles:true}));cell.blur()}};
   cell.oninput=()=>{if(id===20){selectedCore=null;coreNotice='';showCore()}recalculate()};inputs.set(id,cell);
