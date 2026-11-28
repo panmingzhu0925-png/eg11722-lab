@@ -37,12 +37,25 @@ const cursorToggle=document.createElement('button'),cursorControls=document.crea
 const axisButtons={};for(let axis of ['x','y']){let button=document.createElement('button');button.title=axis==='x'?'时间测量：垂直光标':'幅值测量：水平光标';button.setAttribute('aria-label',button.title);button.innerHTML=axis==='x'?'<svg width="22" height="18" style="width:22px;height:18px;min-height:0;max-height:18px;display:inline-block" viewBox="0 0 28 22" aria-hidden="true"><path d="M8 2V20" stroke="currentColor" stroke-width="2"/><path d="M20 2V20" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/></svg>':'<svg width="22" height="18" style="width:22px;height:18px;min-height:0;max-height:18px;display:inline-block" viewBox="0 0 28 22" aria-hidden="true"><path d="M2 6H26" stroke="currentColor" stroke-width="2"/><path d="M2 17H26" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3"/></svg>';button.style.cssText='width:36px;height:30px;min-height:0;padding:4px;display:inline-flex;align-items:center;justify-content:center';button.onclick=()=>{cursorAxis=axis;resetY();decorate()};axisButtons[axis]=button;cursorControls.append(button)}
 function engineeringMeasure(v,kind){if(!Number.isFinite(v))return '—';let abs=Math.abs(v),scale=kind==='Hz'?(abs>=1e6?[1e6,'MHz']:abs>=1000?[1000,'kHz']:[1,'Hz']):(abs>=1?[1,'s']:abs>=.001?[.001,'ms']:abs>=1e-6?[1e-6,'µs']:[1e-9,'ns']);return Number((v/scale[0]).toPrecision(5))+' '+scale[1]}
 const forwardCursor = currentChip === 'EG12523' && Boolean(document.getElementById('forwardScopeBar'));
+let hoverY = null;
 function resetY(){let a=axes(),g=a?.groups.find(g=>g.unit===channelUnit(cursorChannel.value));if(g)cursorValues=[g.min+(g.max-g.min)/3,g.min+(g.max-g.min)*2/3]}
+function legacyScopeButtons() {
+  const selector = currentChip === 'EG1654' ? 'button[data-channel]' :
+    window.eg1163ProtectionView ? 'button[data-live-channel]' : 'button[id^="w"]';
+  return [...wave.closest('.scope').querySelectorAll(selector)]
+    .filter(button => !button.hidden && !button.disabled);
+}
+function scopeChannelId(button) {
+  return button.dataset.waveChannel ?? button.dataset.liveChannel ?? button.dataset.channel ?? button.id.slice(1);
+}
 function selectCursorChannel() {
   if (forwardCursor && cursorEnabled && cursorChannel.value &&
       !axes()?.groups.some(group => group.ids.includes(cursorChannel.value))) {
     forwardRevealChannel(cursorChannel.value);
     update();
+  } else if (cursorEnabled && !forwardCursor) {
+    const button = legacyScopeButtons().find(button => scopeChannelId(button) === cursorChannel.value);
+    if (button && !button.classList.contains('active')) button.click();
   }
   resetY();
   decorate();
@@ -59,7 +72,7 @@ function channelName(id){return window.liveScopeChannels?.[id]?.label??names[id]
 function valuesAt(t){let a=axes();if(!a)return [];if(fullTrace()){let q=pfcLast.sample(t),values={DRV:q.drv,VC:q.vc,VM:q.vm,VIN:q.vin,VCC:q.vcc,FB:q.fb,SS:q.ss,CS:q.cs,IM:q.im,VO:q.vo,VG:q.vg,VAC:q.vac,IL:q.il,IAC:q.ids,IOUT:q.iout,POUT:q.pout,VR:q.vr,VDS:q.vds};if(typeof forwardExtraDefs==='function')for(let [id,d]of Object.entries(forwardExtraDefs()))values[id]=d.value(q);return traces().filter(line=>Number.isFinite(values[line.id])).map(line=>({id:line.id,label:channelName(line.id),color:line.color,value:values[line.id],unit:traceUnit(line.id)}))}let left=pfc?80:75,width=pfc?885:895,row=pfc?185:190,top=pfc?28:35;return traces().map(line=>{let index=a.groups.findIndex(g=>g.unit===channelUnit(line.id));if(index<0)return '';let g=a.groups[index],pts=line.points.trim().split(/\s+/).map(v=>v.split(',').map(Number)),x=left+(t-a.start)/a.span*width;if(!pts.length||x<pts[0][0]||x>pts.at(-1)[0])return '';let n=pts.findIndex(pt=>pt[0]>=x);if(n<0)return '';let q=pts[n],before=pts[Math.max(0,n-1)],y=before[1]+(q[1]-before[1])*(q[0]===before[0]?0:(x-before[0])/(q[0]-before[0])),value=g.min+(scopeGroupTop(a,index,row,top)+scopeGroupHeight(g)-y)/scopeGroupHeight(g)*(g.max-g.min);return {id:line.id,label:channelName(line.id),color:line.color,value,unit:g.unit}}).filter(Boolean)}
 function readAt(t){return valuesAt(t).map(q=>`<span style="color:${q.color}">${q.label} ${Number(q.value.toPrecision(4))} ${q.unit}</span>`).join(' · ')}
 
-const forwardCursorSummary = forwardCursor ? document.getElementById('forwardCursorSummary') : null;
+let forwardCursorSummary = forwardCursor ? document.getElementById('forwardCursorSummary') : null;
 const traceSegments = new WeakMap();
 
 function cursorTraceSegments(node) {
@@ -106,7 +119,7 @@ function cursorLabelCoversCurve(box, traces) {
 }
 
 function forwardCursorLabels(group, index, timeAxis, axes, left, width) {
-  const {factor, label} = forwardAxisDisplay(group);
+  const {factor, label} = commonScopeUnit(group);
   const channel = cursorChannel.value;
   const format = value => Number.isFinite(value) ? Number((value * factor).toPrecision(5)) + ' ' + label : '—';
   const times = cursorPositions.map(position => axes.start + position * axes.span);
@@ -118,7 +131,7 @@ function forwardCursorLabels(group, index, timeAxis, axes, left, width) {
     ? ' · Δt ' + engineeringMeasure(deltaTime,'s') + (deltaTime ? ' · 1/Δt ' + engineeringMeasure(1/deltaTime,'Hz') : '')
     : '';
   const summary = [channelName(channel) + timeText + ' · ΔY ' + format(values[1]-values[0])];
-  const nodes = [...wave.querySelectorAll('[clip-path="url(#pfcClip' + index + ')"]')]
+  const nodes = [...wave.querySelectorAll('[clip-path="url(#' + (pfc?'pfcClip':'scopeClip') + index + ')"]')]
     .filter(node => node.matches('path,polyline'));
   const positions = timeAxis ? cursorPositions.map(p => left + p * width) : values.map(value =>
     group.top + scopeGroupHeight(group) * (1 - (value - group.min) / (group.max - group.min)));
@@ -163,13 +176,429 @@ function forwardCursorLabels(group, index, timeAxis, axes, left, width) {
   return html;
 }
 
-function decorate(){if(forwardCursorSummary)forwardCursorSummary.hidden=true;wave.querySelectorAll('.scope-decoration').forEach(n=>n.remove());let a=axes();if(!a)return;let lines=traces(),channels=window.eg1163ProtectionView?[...(window.liveScopeSelected??[])].map(id=>({id,color:window.liveScopeChannels[id].color})):lines,choices=forwardCursor?forwardWaveSpecs().flatMap(([, , ,signals])=>signals.map(([id])=>({id}))):channels,key=choices.map(q=>q.id).join('|');for(let q of channels){let button=document.getElementById('w'+q.id);if(button)button.style.color=q.color}if(key!==channelList){let previous=cursorChannel.value;cursorChannel.innerHTML=choices.map(q=>`<option value="${q.id}">${channelName(q.id)}</option>`).join('');cursorChannel.value=choices.some(q=>q.id===previous)?previous:(channels[0]?.id??choices[0]?.id??'');channelList=key;resetY()}for(let axis of ['x','y'])axisButtons[axis].classList.toggle('active',axis===cursorAxis);let root=document.createElementNS('http://www.w3.org/2000/svg','g'),row=pfc?185:190,top=pfc?28:35,left=pfc?80:75,width=pfc?885:895,bottom=a.bottom??a.groups.length*row-10;root.setAttribute('class','scope-decoration');root.setAttribute('pointer-events','none');let html='';if(currentChip!=='EG12523')a.groups.forEach((g,i)=>{let members=channels.filter(q=>channelUnit(q.id)===g.unit);members.forEach((q,n)=>html+=`<text x="${430+n*530/Math.max(1,members.length)}" y="${scopeGroupTop(a,i,row,top)-10}" fill="${q.color}" font-size="12">${channelName(q.id)}${window.eg1163ProtectionView&&['HO','LO'].includes(q.id)?' · '+(window.eg1163PwmMeasurements?.[q.id]?.frequency?engineeringMeasure(window.eg1163PwmMeasurements[q.id].frequency,'Hz'):'—'):''}</text>`)});if(hoverFraction!==null){let x=left+hoverFraction*width;html+=`<path data-hover-cursor="true" d="M${x} 15V${bottom}" stroke="#dcebf5" stroke-width="1.5" stroke-dasharray="5 4"/>`}let text='',unit=channelUnit(cursorChannel.value),gIndex=a.groups.findIndex(g=>g.unit===unit),g=a.groups[gIndex];if(cursorEnabled&&g){for(let i=0;i<2;i++){let color=i?'#f284d8':'#ffd36d',x=left+cursorPositions[i]*width,y=scopeGroupTop(a,gIndex,row,top)+scopeGroupHeight(g)-(cursorValues[i]-g.min)/(g.max-g.min)*scopeGroupHeight(g),d=cursorAxis==='x'?`M${x} 15V${bottom}`:`M${left} ${y}H${left+width}`,tx=cursorAxis==='x'?x+5:left+8,ty=cursorAxis==='x'?14:y-5;html+=`<path data-cursor="${i}" d="${d}" stroke="transparent" stroke-width="16" pointer-events="stroke" style="cursor:${cursorAxis==='x'?'ew-resize':'ns-resize'}"/><path d="${d}" stroke="${color}" stroke-width="${cursorDrag===i?2.5:1.5}" ${i?'stroke-dasharray="6 4"':''}/><text data-cursor="${i}" x="${tx}" y="${ty}" fill="${color}" font-size="13" pointer-events="all" style="cursor:move">${i?'B':'A'}</text>`}if(forwardCursor)html+=forwardCursorLabels(g,gIndex,cursorAxis==='x',a,left,width);else if(cursorAxis==='x'){let times=cursorPositions.map(f=>a.start+f*a.span),values=times.map(t=>valuesAt(t).find(q=>q.id===cursorChannel.value)?.value),delta=Math.abs(times[1]-times[0]);text=`${channelName(cursorChannel.value)} · A=${engineeringMeasure(times[0],'s')} · B=${engineeringMeasure(times[1],'s')} · Δt=${engineeringMeasure(delta,'s')} · 1/Δt=${delta?engineeringMeasure(1/delta,'Hz'):'—'}<br>YA=${Number.isFinite(values[0])?Number(values[0].toPrecision(5)):'—'} ${unit} · YB=${Number.isFinite(values[1])?Number(values[1].toPrecision(5)):'—'} ${unit} · ΔY=${values.every(Number.isFinite)?Number((values[1]-values[0]).toPrecision(5)):'—'} ${unit}`}else text=`${channelName(cursorChannel.value)} · A=${Number(cursorValues[0].toPrecision(5))} ${unit} · B=${Number(cursorValues[1].toPrecision(5))} ${unit} · ΔY=${Number((cursorValues[1]-cursorValues[0]).toPrecision(5))} ${unit}`}
-root.innerHTML=html;wave.append(root);cursorReadout.innerHTML=(hoverFraction===null||(forwardCursor&&cursorEnabled)?'':`鼠标 ${engineeringMeasure(a.start+hoverFraction*a.span,'s')} · ${readAt(a.start+hoverFraction*a.span)}<br>`)+text}
+function scopeCursorMarkers(axes, index, color, x, y, left, width, row, top) {
+  const letter = index ? 'B' : 'A';
+  if (cursorAxis !== 'x') {
+    return `<text data-cursor="${index}" x="${left+8}" y="${y-5}" fill="${color}" font-size="13" pointer-events="all" style="cursor:move">${letter}</text>`;
+  }
+  const close = Math.abs(cursorPositions[0] - cursorPositions[1]) * width < 26;
+  const toLeft = x > left + width - 18 || (close && index === 0 && x > left + 18);
+  const stagger = close && (x < left + 18 || x > left + width - 18);
+  return axes.groups.map((group, n) => {
+    const markerY = scopeGroupTop(axes,n,row,top) + 3 + (stagger && index ? 17 : 0);
+    return `<g data-cursor="${index}" data-cursor-row="${n}" style="cursor:ew-resize">
+      <path d="M${x-4} ${markerY}h8l-4 5z" fill="${color}" pointer-events="all"/>
+      <text x="${x+(toLeft?-6:6)}" y="${markerY+11}" text-anchor="${toLeft?'end':'start'}" fill="${color}" font-size="12" font-weight="700" paint-order="stroke" stroke="#142338" stroke-width="3" pointer-events="all">${letter}</text>
+    </g>`;
+  }).join('');
+}
+
+function decorate(){if(forwardCursorSummary)forwardCursorSummary.hidden=true;wave.querySelectorAll('.scope-decoration').forEach(n=>n.remove());let a=axes();if(!a)return;let lines=traces(),channels=window.eg1163ProtectionView?[...(window.liveScopeSelected??[])].map(id=>({id,color:window.liveScopeChannels[id].color})):lines,choices=forwardCursor?forwardWaveSpecs().flatMap(([, , ,signals])=>signals.map(([id])=>({id}))):legacyScopeButtons().map(button=>({id:scopeChannelId(button)})),key=choices.map(q=>q.id).join('|');for(let q of channels){let button=document.getElementById('w'+q.id);if(button)button.style.color=q.color}if(key!==channelList){let previous=cursorChannel.value;cursorChannel.innerHTML=choices.map(q=>`<option value="${q.id}">${channelName(q.id)}</option>`).join('');cursorChannel.value=choices.some(q=>q.id===previous)?previous:(channels[0]?.id??choices[0]?.id??'');channelList=key;resetY()}for(let axis of ['x','y'])axisButtons[axis].classList.toggle('active',axis===cursorAxis);let root=document.createElementNS('http://www.w3.org/2000/svg','g'),row=pfc?185:190,top=pfc?28:35,left=pfc?80:75,width=pfc?885:895,bottom=a.bottom??a.groups.length*row-10;root.setAttribute('class','scope-decoration');root.setAttribute('pointer-events','none');let html='';if(currentChip!=='EG12523'&&!wave.closest('.common-scope-interface'))a.groups.forEach((g,i)=>{let members=channels.filter(q=>channelUnit(q.id)===g.unit);members.forEach((q,n)=>html+=`<text x="${430+n*530/Math.max(1,members.length)}" y="${scopeGroupTop(a,i,row,top)-10}" fill="${q.color}" font-size="12">${channelName(q.id)}${window.eg1163ProtectionView&&['HO','LO'].includes(q.id)?' · '+(window.eg1163PwmMeasurements?.[q.id]?.frequency?engineeringMeasure(window.eg1163PwmMeasurements[q.id].frequency,'Hz'):'—'):''}</text>`)});if(hoverFraction!==null&&!wave.closest('.scope').classList.contains('hide-forward-guide')){let x=left+hoverFraction*width;const horizontal=hoverY!==null?` M${left} ${hoverY}H${left+width}`: '';html+=`<path data-hover-cursor="true" d="M${x} 15V${bottom}${horizontal}" stroke="#dcebf5" stroke-width="1.5" stroke-dasharray="5 4"/>`}let text='',unit=channelUnit(cursorChannel.value),gIndex=a.groups.findIndex(g=>g.unit===unit),g=a.groups[gIndex];if(cursorEnabled&&g){for(let i=0;i<2;i++){let color=i?'#f284d8':'#ffd36d',x=left+cursorPositions[i]*width,y=scopeGroupTop(a,gIndex,row,top)+scopeGroupHeight(g)-(cursorValues[i]-g.min)/(g.max-g.min)*scopeGroupHeight(g),d=cursorAxis==='x'?`M${x} 15V${bottom}`:`M${left} ${y}H${left+width}`;html+=`<path data-cursor="${i}" d="${d}" stroke="transparent" stroke-width="16" pointer-events="stroke" style="cursor:${cursorAxis==='x'?'ew-resize':'ns-resize'}"/><path d="${d}" stroke="${color}" stroke-width="${cursorDrag===i?2.5:1.5}" ${i?'stroke-dasharray="6 4"':''}/>${scopeCursorMarkers(a, i, color, x, y, left, width, row, top)}`}if(forwardCursorSummary)html+=forwardCursorLabels(g,gIndex,cursorAxis==='x',a,left,width);else if(cursorAxis==='x'){let times=cursorPositions.map(f=>a.start+f*a.span),values=times.map(t=>valuesAt(t).find(q=>q.id===cursorChannel.value)?.value),delta=Math.abs(times[1]-times[0]);text=`${channelName(cursorChannel.value)} · A=${engineeringMeasure(times[0],'s')} · B=${engineeringMeasure(times[1],'s')} · Δt=${engineeringMeasure(delta,'s')} · 1/Δt=${delta?engineeringMeasure(1/delta,'Hz'):'—'}<br>YA=${Number.isFinite(values[0])?Number(values[0].toPrecision(5)):'—'} ${unit} · YB=${Number.isFinite(values[1])?Number(values[1].toPrecision(5)):'—'} ${unit} · ΔY=${values.every(Number.isFinite)?Number((values[1]-values[0]).toPrecision(5)):'—'} ${unit}`}else text=`${channelName(cursorChannel.value)} · A=${Number(cursorValues[0].toPrecision(5))} ${unit} · B=${Number(cursorValues[1].toPrecision(5))} ${unit} · ΔY=${Number((cursorValues[1]-cursorValues[0]).toPrecision(5))} ${unit}`}
+root.innerHTML=html;wave.append(root);cursorReadout.innerHTML=(hoverFraction===null||(forwardCursorSummary&&cursorEnabled)?'':`鼠标 ${engineeringMeasure(a.start+hoverFraction*a.span,'s')} · ${readAt(a.start+hoverFraction*a.span)}<br>`)+text}
+function installScopeChannelMenu() {
+  if (wave.dataset.channelMenuReady) return;
+  wave.dataset.channelMenuReady = 'true';
+  const menu = document.createElement('div');
+  menu.className = 'forward-channel-menu';
+  menu.setAttribute('role', 'group');
+  menu.setAttribute('aria-label', '波形选择');
+  menu.hidden = true;
+  const options = ['仅显示此信号', '显示本栏全部信号'].map(text => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = text;
+    menu.append(button);
+    return button;
+  });
+  const style = document.createElement('style');
+  style.textContent = ".forward-channel-menu{position:fixed;left:0;top:0;z-index:1000;display:grid;min-width:155px;padding:4px;background:#182c40;border:1px solid #536981;border-radius:6px;box-shadow:0 6px 18px #0005}\n.forward-channel-menu[hidden]{display:none}\n.forward-channel-menu button{padding:6px 9px;text-align:left;background:transparent;color:#e2eef8;border:0;border-radius:4px;font-size:12px}\n.forward-channel-menu button:is(:hover,:focus-visible){background:#2e5a7e}";
+  document.head.append(style);
+  document.body.append(menu);
+  let selected = null;
+
+  function close(restore = false) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    if (restore) selected?.button.focus();
+  }
+
+  function choose(showAll) {
+    if (!selected) return;
+    const {id, section, button, controls} = selected;
+    if (!section) {
+      close();
+      for (const channel of controls) {
+        if (channel.classList.contains('active') !== (showAll || channel === button)) channel.click();
+      }
+      button.focus({preventScroll:true});
+      return;
+    }
+    const [key, , , signals] = section;
+    for (const [channel] of signals) {
+      if (showAll || channel === id) pfcActive.add(channel);
+      else pfcActive.delete(channel);
+    }
+    const state = forwardWaveSettings();
+    if (!state.open.includes(key)) state.open.push(key);
+    state.selected = [...pfcActive];
+    try { localStorage.setItem('eg12523-customer-wave-panels-v2', JSON.stringify(state)); } catch {}
+    close();
+    update();
+    wave.querySelector('[data-wave-channel="' + id + '"]')?.focus({preventScroll:true});
+  }
+
+  options[0].addEventListener('click', () => choose(false));
+  options[1].addEventListener('click', () => choose(true));
+  menu.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close(true);
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      options[document.activeElement === options[0] ? 1 : 0].focus();
+    }
+  });
+
+  const selector = currentChip === 'EG12523' ? '[data-wave-channel]'
+    : currentChip === 'EG1654' ? 'button[data-channel]'
+    : 'button[data-live-channel], button[id^="w"]';
+  const container = wave.closest('.scope');
+  container.addEventListener('contextmenu', event => {
+    const proxy = event.target.closest('[data-scope-proxy]');
+    const button = proxy
+      ? legacyScopeButtons().find(control => scopeChannelId(control) === proxy.dataset.scopeProxy)
+      : event.target.closest(selector);
+    if (!button || button.hidden || button.disabled) return;
+    const id = scopeChannelId(button);
+    const section = currentChip === 'EG12523'
+      ? forwardWaveSpecs().find(([, , , signals]) => signals.some(([channel]) => channel === id))
+      : null;
+    const unit = channelUnit(id);
+    const controls = section ? [] : [...container.querySelectorAll(selector)]
+      .filter(control => !control.hidden && !control.disabled && (proxy || control.getClientRects().length) &&
+        Boolean(control.dataset.liveChannel) === Boolean(button.dataset.liveChannel) &&
+        (control === button || (unit && channelUnit(scopeChannelId(control)) === unit)));
+    if (!section && !controls.length) return;
+    event.preventDefault();
+    selected = {id, section, button, controls};
+    menu.hidden = false;
+    const bounds = menu.getBoundingClientRect();
+    const anchor = (proxy || button).getBoundingClientRect();
+    const x = event.clientX || anchor.left;
+    const y = event.clientY || anchor.bottom;
+    menu.style.left = Math.max(4, Math.min(x, innerWidth - bounds.width - 4)) + 'px';
+    menu.style.top = Math.max(4, Math.min(y, innerHeight - bounds.height - 4)) + 'px';
+    options[0].focus({preventScroll:true});
+  });
+  document.addEventListener('pointerdown', event => { if (!menu.contains(event.target)) close(); }, true);
+  document.addEventListener('focusin', event => { if (!menu.contains(event.target)) close(); });
+  window.addEventListener('scroll', () => close(), true);
+  window.addEventListener('resize', () => close());
+}
+
+installScopeChannelMenu();
+
 function cursorPoint(e){let p=wave.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(wave.getScreenCTM().inverse())}
 wave.addEventListener('pointerdown',e=>{let hit=e.target.closest?.('[data-cursor]');if(!cursorEnabled||!hit||e.button!==0)return;e.preventDefault();e.stopImmediatePropagation?.();cursorDrag=Number(hit.dataset.cursor);wave.setPointerCapture(e.pointerId);decorate()},true);
-wave.addEventListener('pointermove',e=>{let a=axes();if(!a)return;let p=cursorPoint(e),left=pfc?80:75,width=pfc?885:895;if(cursorDrag!==null){e.preventDefault();e.stopImmediatePropagation?.();if(cursorAxis==='x')cursorPositions[cursorDrag]=Math.max(0,Math.min(1,(p.x-left)/width));else{let unit=channelUnit(cursorChannel.value),index=a.groups.findIndex(g=>g.unit===unit),g=a.groups[index];if(g)cursorValues[cursorDrag]=g.min+Math.max(0,Math.min(1,1-(p.y-(scopeGroupTop(a,index,pfc?185:190,pfc?28:35)))/scopeGroupHeight(g)))*(g.max-g.min)}decorate();return}hoverFraction=p.x>=left&&p.x<=left+width?(p.x-left)/width:null;decorate()},true);
-for(let event of ['pointerup','pointercancel'])wave.addEventListener(event,e=>{if(cursorDrag===null)return;e.stopImmediatePropagation?.();cursorDrag=null;decorate()},true);wave.addEventListener('pointerleave',()=>{if(cursorDrag===null){hoverFraction=null;decorate()}});window.decorateScope=decorate;const beforeDecorate=update;update=function(){beforeDecorate();decorate()};
+wave.addEventListener('pointermove',e=>{let a=axes();if(!a)return;let p=cursorPoint(e),left=pfc?80:75,width=pfc?885:895;if(cursorDrag!==null){e.preventDefault();e.stopImmediatePropagation?.();if(cursorAxis==='x')cursorPositions[cursorDrag]=Math.max(0,Math.min(1,(p.x-left)/width));else{let unit=channelUnit(cursorChannel.value),index=a.groups.findIndex(g=>g.unit===unit),g=a.groups[index];if(g)cursorValues[cursorDrag]=g.min+Math.max(0,Math.min(1,1-(p.y-(scopeGroupTop(a,index,pfc?185:190,pfc?28:35)))/scopeGroupHeight(g)))*(g.max-g.min)}decorate();return}const onPlot = !e.target.closest?.('[data-wave-channel],[data-wave-fold],[data-scope-resize],[data-common-resize],[data-scope-proxy]') &&
+      a.groups.some((group,index) => {
+        const top = scopeGroupTop(a,index,pfc?185:190,pfc?28:35);
+        return p.y >= top && p.y <= top + scopeGroupHeight(group);
+      });
+  hoverFraction=onPlot&&p.x>=left&&p.x<=left+width?(p.x-left)/width:null;
+  hoverY=hoverFraction!==null?p.y:null;
+  decorate()},true);
+for(let event of ['pointerup','pointercancel'])wave.addEventListener(event,e=>{if(cursorDrag===null)return;e.stopImmediatePropagation?.();cursorDrag=null;decorate()},true);wave.addEventListener('pointerleave',()=>{if(cursorDrag===null){hoverFraction=null;hoverY=null;decorate()}});window.decorateScope=decorate;const beforeDecorate=update;update=function(){beforeDecorate();decorate()};
 window.refreshScopeComparison=()=>{if(parameterRevision()===revision)current=capture();paint()};revision=parameterRevision();current=capture();refreshEdge();decorate();
+const commonPlotHeights = new Map();
+if (!forwardCursor) {
+  globalThis.layoutCommonScope = groups => {
+    let y = 44;
+    for (const group of groups) {
+      group.top = y;
+      group.height = commonPlotHeights.get(group.unit) ?? 140;
+      y += group.height + 59;
+    }
+    return y - 35;
+  };
+}
+
+function commonScopeUnit(group) {
+  const unit = group.axisUnit ?? group.unit;
+  const base = unit === '驱动/V' || unit.startsWith('V·') ? 'V' : unit;
+  const magnitude = Math.max(Math.abs(group.min),Math.abs(group.max));
+  if (magnitude > 0 && magnitude < 1 && ['V','A'].includes(base)) {
+    if (magnitude >= .001) return {factor:1e3,label:'m'+base};
+    if (magnitude >= .000001) return {factor:1e6,label:'µ'+base};
+    return {factor:1e9,label:'n'+base};
+  }
+  return {factor:1,label:base};
+}
+
+function commonScopeYAxis(group, top, left, bottom) {
+  const right=left===75?970:965, width=right-left;
+  const {factor,label}=commonScopeUnit(group);
+  const middle=(top+bottom)/2;
+  let svg=`<rect x="12" y="${top-40}" width="976" height="${bottom-top+60}" rx="7" fill="#172a3c" stroke="#334a60"/>
+    <rect data-axis-select="y" data-axis-unit="${group.unit}" x="13" y="${top}" width="${left-15}" height="${bottom-top}" fill="transparent" style="cursor:ns-resize"/>
+    <text x="38" y="${middle}" transform="rotate(-90 38 ${middle})" text-anchor="middle" dominant-baseline="middle" fill="#bfd3e2" font-size="12" pointer-events="none">${label}</text>`;
+  const min=group.min*factor, max=group.max*factor, desired=(max-min)/5;
+  if(desired>0 && Number.isFinite(desired)){
+    const power=10**Math.floor(Math.log10(desired));
+    const step=([1,2,5,10].find(n=>n*power>=desired)??10)*power;
+    const digits=Math.max(0,Math.min(12,Math.ceil(-Math.log10(step))));
+    const start=Math.ceil(min/step);
+    for(let i=0;i<12&&step>0;i++){
+      const value=(start+i)*step;
+      if(value>max)break;
+      const y=bottom-(value-min)/(max-min)*(bottom-top);
+      svg+=`<path d="M${left} ${y}H${right}" stroke="#2b3b50"/><text x="${left-9}" y="${y}" dominant-baseline="middle" text-anchor="end" fill="#9fb8cb" font-size="11" pointer-events="none">${Number(value.toFixed(digits))}</text>`;
+    }
+  }
+  const buttons=legacyScopeButtons().filter(button=>channelUnit(scopeChannelId(button))===group.unit);
+  const signals=buttons.map(button=>{
+    const id=scopeChannelId(button), active=button.classList.contains('active');
+    const color=button.style.color || '#bdd5eb';
+    return `<button type="button" data-scope-proxy="${id}" aria-pressed="${active}" style="--signal-color:${color}" title="${channelName(id)} · 左键开关，右键选本栏信号">${channelName(id)}</button>`;
+  }).join('');
+  const handle=bottom+16;
+  return svg+`<foreignObject x="22" y="${top-32}" width="948" height="32"><div xmlns="http://www.w3.org/1999/xhtml" class="common-scope-symbols"><b>${label}</b>${signals}</div></foreignObject>
+   <rect data-axis-select="x" x="${left}" y="${bottom+1}" width="${width}" height="9" fill="transparent" style="cursor:ew-resize"/>
+   <g data-common-resize="${group.unit}" tabindex="0" role="separator" aria-label="调整 ${label} 波形窗高度" aria-valuemin="90" aria-valuemax="540" aria-valuenow="${group.height??140}" style="cursor:ns-resize">
+    <rect x="${left}" y="${handle-5}" width="${width}" height="11" fill="transparent"/>
+    <path d="M499 ${handle}h48" stroke="#6a8298" stroke-width="3" stroke-linecap="round" pointer-events="none"/>
+   </g>`;
+}
+
+function installCommonScopeResize() {
+  const limit=height=>Math.round(Math.max(90,Math.min(540,height)));
+  let drag=null;
+  wave.addEventListener('pointerdown',event=>{
+    const handle=event.target.closest('[data-common-resize]');
+    if(!handle || event.button!==0)return;
+    const group=axes()?.groups.find(g=>g.unit===handle.dataset.commonResize);
+    if(!group)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const scale=Math.hypot(wave.getScreenCTM().c,wave.getScreenCTM().d);
+    drag={handle,group,scale,start:event.clientY,height:group.height??140,pointer:event.pointerId};
+    wave.setPointerCapture(event.pointerId);
+  },true);
+  wave.addEventListener('pointermove',event=>{
+    if(!drag || drag.pointer!==event.pointerId)return;
+    event.stopImmediatePropagation();
+    const base=drag.group.height??140;
+    drag.height=limit(base+(event.clientY-drag.start)/drag.scale);
+    drag.handle.setAttribute('transform','translate(0 '+(drag.height-base)+')');
+  },true);
+  const finish=event=>{
+    if(!drag || drag.pointer!==event.pointerId)return;
+    event.stopImmediatePropagation();
+    const {handle,group,height}=drag;
+    drag=null;
+    handle.removeAttribute('transform');
+    if(event.type==='pointerup'&&height!==group.height){
+      commonPlotHeights.set(group.unit,height);
+      update();
+    }
+  };
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])wave.addEventListener(type,finish,true);
+  wave.addEventListener('keydown',event=>{
+    const handle=event.target.closest('[data-common-resize]');
+    if(!handle||!['ArrowUp','ArrowDown','Home'].includes(event.key))return;
+    const group=axes()?.groups.find(g=>g.unit===handle.dataset.commonResize);
+    if(!group)return;
+    event.preventDefault();
+    commonPlotHeights.set(group.unit,event.key==='Home'?140:limit((group.height??140)+(event.key==='ArrowDown'?20:-20)));
+    update();
+    [...wave.querySelectorAll('[data-common-resize]')].find(node=>node.dataset.commonResize===group.unit)?.focus();
+  });
+  wave.addEventListener('pointerdown',event=>{
+    if(event.target.closest('[data-scope-proxy]'))event.stopImmediatePropagation();
+  },true);
+  wave.addEventListener('wheel',event=>{
+    if(event.shiftKey || event.target.closest('[data-scope-proxy],[data-common-resize]'))return;
+    const axis=event.target.closest('[data-axis-select]');
+    if(axis?.dataset.axisSelect==='x')return;
+    const a=axes();
+    if(!a)return;
+    const point=cursorPoint(event),left=pfc?80:75;
+    const unit=axis?.dataset.axisUnit ?? (point.x>=left&&wave.scopeAxisFocus?.kind==='y'?wave.scopeAxisFocus.unit:null);
+    const g=unit?a.groups.find(group=>group.unit===unit):point.x<left?a.groups.find(group=>point.y>=group.top&&point.y<=group.top+group.height):null;
+    if(!g)return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const ratio=Math.max(0,Math.min(1,1-(point.y-g.top)/g.height));
+    const center=g.min+ratio*(g.max-g.min), factor=event.deltaY>0?1.25:.8;
+    const limits=pfc?pfcYLimits:buckYLimits;
+    limits[g.unit]={min:center-(center-g.min)*factor,max:center+(g.max-center)*factor};
+    wave.scopeAxisFocus={kind:'y',unit:g.unit};
+    update();
+  },{capture:true,passive:false});
+  wave.addEventListener('click',event=>{
+    const proxy=event.target.closest('[data-scope-proxy]');
+    if(!proxy)return;
+    const button=legacyScopeButtons().find(button=>scopeChannelId(button)===proxy.dataset.scopeProxy);
+    button?.click();
+  });
+}
+
+function installLegacyScopeInterface() {
+  if (forwardCursor) return;
+  scopeYAxis=commonScopeYAxis;
+  installCommonScopeResize();
+  const scope = wave.closest('.scope');
+  const style = document.createElement('style');
+  style.textContent = ".panel.common-scope-interface{overflow:visible;background:#142338;color:#dce9f5}\n.common-scope-interface .heading{background:#142338}\n.common-scope-bar,.common-scope-options{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:6px 12px;background:#1b2d40;border-bottom:1px solid #40566d}\n.common-scope-bar{position:sticky;top:var(--common-scope-top,0px);z-index:19}\n.common-scope-options{position:sticky;top:calc(var(--common-scope-top,0px) + var(--common-scope-bar-height,40px));z-index:18}\n.common-scope-bar button,.common-scope-options :is(button,select,input){box-sizing:border-box;min-height:27px;padding:3px 7px;color:#dce9f5;background:#172738;border:1px solid #536981;border-radius:4px;font-size:12px}\n.common-scope-bar button:is([aria-pressed=true],[aria-expanded=true]),.common-scope-channels button.active{background:#2e6f9f;border-color:#79b3dc}\n.common-scope-interface [hidden]{display:none!important}\n.common-scope-options-inner,.common-scope-channels{display:flex;align-items:center;flex-wrap:wrap;gap:4px}\n.common-scope-range{margin-left:auto;color:#c4d7e7;font-size:11px;font-variant-numeric:tabular-nums}\n.common-scope-interface .heading+.tools:empty{display:none}\n.common-scope-interface #channelButtons:empty{display:none}.common-scope-channels #channelButtons,.common-scope-channels>div{padding:0!important;gap:4px!important;border:0!important} .common-scope-summary{flex-basis:100%;font-size:11px}.common-scope-interface .forward-cursor-card{box-sizing:border-box;padding:2px 5px;white-space:nowrap;border:1px solid #617c95;border-radius:5px;background:#142338ed;color:#e2eef8;font:11px/1.4 Microsoft YaHei,sans-serif}.common-scope-symbols{display:flex;align-items:center;gap:5px;overflow-x:auto;white-space:nowrap;color:#dce9f5;font:12px Microsoft YaHei,sans-serif;padding:0 8px}.common-scope-symbols button{flex:none;padding:4px 7px;background:#1d3044;color:#a0b6ca;border:1px solid #3b526a;border-radius:5px;font-size:12px}.common-scope-symbols button[aria-pressed=true]{border-color:var(--signal-color);color:var(--signal-color);background:#2b4256}.common-scope-symbols b{flex:none;min-width:30px}\n.common-scope-interface .tools:has(>label[hidden]):not(:has(>button:not([hidden]))){display:none}";
+  document.head.append(style);
+  scope.classList.add('common-scope-interface');
+
+  const bar = document.createElement('div');
+  bar.className = 'common-scope-bar';
+  bar.setAttribute('role','toolbar');
+  bar.setAttribute('aria-label','示波器快捷操作');
+  const band = document.createElement('div');
+  band.className = 'common-scope-options';
+  band.hidden = true;
+  const range = document.createElement('output');
+  range.className = 'common-scope-range';
+  scope.querySelector('.heading').after(bar,band);
+
+  function button(label, action) {
+    const control = document.createElement('button');
+    control.type = 'button';
+    control.textContent = label;
+    control.addEventListener('click',action);
+    bar.append(control);
+    return control;
+  }
+
+  const byId = id => document.getElementById(id);
+  const navigation = byId('scopeTool');
+  const steadySource = byId('timeSwitch') || byId('steady1163') || byId('resetAxes');
+  const fullSource = byId('timeLine') || byId('process1163');
+  const steady = button('稳态波形', () => steadySource?.click());
+  if (fullSource) {
+    const full = button('全记录', () => fullSource.click());
+    bar.prepend(full);
+  }
+  button('Y 适合', () => byId('autoYAxes')?.click());
+  const pan = button('平移', () => { navigation.value='pan'; sync(); });
+  const zoom = button('框选', () => { navigation.value='zoom'; sync(); });
+  const guide = button('十字线', () => {
+    scope.classList.toggle('hide-forward-guide');
+    sync();
+    decorate();
+  });
+
+  const channelOptions = document.createElement('div');
+  channelOptions.className = 'common-scope-channels';
+  channelOptions.hidden = true;
+  const fixedChannels = byId('channelButtons');
+  const liveChannels = scope.querySelector('button[data-live-channel]')?.parentElement;
+  if(fixedChannels) channelOptions.append(fixedChannels);
+  if(liveChannels) channelOptions.append(liveChannels);
+  channelOptions.append(...scope.querySelectorAll('button[id^="w"]'));
+  const channelsButton = button('通道选择', () => { channelOptions.hidden=!channelOptions.hidden; sync(); });
+  channelsButton.setAttribute('aria-expanded','false');
+
+  const triggerOptions = document.createElement('div');
+  triggerOptions.className = 'common-scope-options-inner';
+  triggerOptions.hidden = true;
+  const liveArm = byId('arm1163');
+  if (liveArm) {
+    for (const id of ['acquisition1163','triggerSource1163','triggerLevel1163','triggerSpan1163','triggerEdge1163','arm1163','triggerInfo1163']) {
+      const node=byId(id);
+      if (node) triggerOptions.append(node.closest('label') || node);
+    }
+  } else {
+    triggerOptions.append(edgeBox);
+  }
+  const triggerButton = button('沿触发', () => {
+    triggerOptions.hidden = !triggerOptions.hidden;
+    edgeEnabled = !triggerOptions.hidden;
+    if (!edgeEnabled) {
+      edgeMark=null;
+      byId('commonEdgeStatus').textContent='';
+      if (liveArm && byId('acquisition1163')?.value === 'single') {
+        const mode=byId('acquisition1163');
+        mode.value='auto';
+        mode.dispatchEvent(new Event('change'));
+      }
+    }
+    refreshEdge();
+    sync();
+  });
+
+  const cursorOptions = document.createElement('div');
+  cursorOptions.className = 'common-scope-options-inner';
+  cursorOptions.append(cursorControls);
+  bar.append(cursorToggle);
+  cursorToggle.addEventListener('click',sync);
+  const comparison=byId('compareToggle');
+  comparison.title='显示上一次波形，虚线表示上一次结果';
+  const syncComparison=()=>{
+    comparison.textContent='波形对比';
+    comparison.setAttribute('aria-pressed',String(overlayEnabled));
+  };
+  comparison.addEventListener('click',syncComparison);
+  syncComparison();
+  for (const id of ['compareToggle','compareClear','lockBaseline','coldStart1163','play1163','advance1163','processInfo1163']) {
+    const node=byId(id);
+    if(node) bar.append(node);
+  }
+  bar.append(range);
+  forwardCursorSummary=document.createElement('output');
+  forwardCursorSummary.className='common-scope-summary';
+  forwardCursorSummary.hidden=true;
+  bar.append(forwardCursorSummary);
+  band.append(channelOptions,triggerOptions,cursorOptions);
+  tools.style.display='none';
+  if (fullSource) fullSource.hidden=true;
+  if (steadySource && steadySource!==byId('resetAxes')) steadySource.hidden=true;
+  edgeEnabled=false;
+  refreshEdge();
+
+  function sync() {
+    pan.setAttribute('aria-pressed', String(navigation.value==='pan'));
+    zoom.setAttribute('aria-pressed', String(navigation.value==='zoom'));
+    guide.setAttribute('aria-pressed', String(!scope.classList.contains('hide-forward-guide')));
+    triggerButton.setAttribute('aria-expanded',String(!triggerOptions.hidden));
+    channelsButton.setAttribute('aria-expanded',String(!channelOptions.hidden));
+    cursorToggle.setAttribute('aria-expanded',String(cursorEnabled));
+    band.hidden=channelOptions.hidden && triggerOptions.hidden && !cursorEnabled;
+    const view=axes();
+    const micro=view?.span < .002;
+    const scale=micro?1e6:1000, unit=micro?'µs':'ms';
+    const display=x=>Number((x*scale).toPrecision(6));
+    range.textContent=view?.groups.length
+      ? display(view.start)+' – '+display(view.start+view.span)+' '+unit+' · '+display(view.span/10)+' '+unit+'/格'
+      : '等待波形';
+  }
+
+  const metrics = scope.closest('article')?.querySelector('.stats');
+  if (metrics) {
+    const offset = () => {
+      const style=getComputedStyle(metrics);
+      const top=style.position==='sticky'?metrics.getBoundingClientRect().height+(parseFloat(style.top)||0):0;
+      scope.style.setProperty('--common-scope-top',top+'px');
+    };
+    new ResizeObserver(offset).observe(metrics);
+    window.addEventListener('resize',offset);
+    offset();
+  }
+  new ResizeObserver(() => scope.style.setProperty('--common-scope-bar-height',bar.getBoundingClientRect().height+'px')).observe(bar);
+  navigation.addEventListener('change',sync);
+  const before=update;
+  update=function(){before();sync()};
+  sync();
+  update();
+}
+if (!forwardCursor) {
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',installLegacyScopeInterface,{once:true});
+  else installLegacyScopeInterface();
+}
+
 })();
 
 // Keep original metric nodes; compact them only after scrolling to the workbench.
