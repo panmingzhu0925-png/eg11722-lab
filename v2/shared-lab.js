@@ -67,7 +67,8 @@ cursorToggle.onclick = () => {
   selectCursorChannel();
 };
 cursorChannel.onchange = selectCursorChannel;
-function channelUnit(id){return window.liveScopeChannels?.[id]?.unit??traceUnit(id)}
+const stableChannelUnits=new Map();
+function channelUnit(id){if(stableChannelUnits.has(id))return stableChannelUnits.get(id);return window.liveScopeChannels?.[id]?.unit??traceUnit(id)}
 function channelName(id){return window.liveScopeChannels?.[id]?.label??names[id]??id}
 function valuesAt(t){let a=axes();if(!a)return [];if(fullTrace()){let q=pfcLast.sample(t),values={DRV:q.drv,VC:q.vc,VM:q.vm,VIN:q.vin,VCC:q.vcc,FB:q.fb,SS:q.ss,CS:q.cs,IM:q.im,VO:q.vo,VG:q.vg,VAC:q.vac,IL:q.il,IAC:q.ids,IOUT:q.iout,POUT:q.pout,VR:q.vr,VDS:q.vds};if(typeof forwardExtraDefs==='function')for(let [id,d]of Object.entries(forwardExtraDefs()))values[id]=d.value(q);return traces().filter(line=>Number.isFinite(values[line.id])).map(line=>({id:line.id,label:channelName(line.id),color:line.color,value:values[line.id],unit:traceUnit(line.id)}))}let left=pfc?80:75,width=pfc?885:895,row=pfc?185:190,top=pfc?28:35;return traces().map(line=>{let index=a.groups.findIndex(g=>g.unit===channelUnit(line.id));if(index<0)return '';let g=a.groups[index],pts=line.points.trim().split(/\s+/).map(v=>v.split(',').map(Number)),x=left+(t-a.start)/a.span*width;if(!pts.length||x<pts[0][0]||x>pts.at(-1)[0])return '';let n=pts.findIndex(pt=>pt[0]>=x);if(n<0)return '';let q=pts[n],before=pts[Math.max(0,n-1)],y=before[1]+(q[1]-before[1])*(q[0]===before[0]?0:(x-before[0])/(q[0]-before[0])),value=g.min+(scopeGroupTop(a,index,row,top)+scopeGroupHeight(g)-y)/scopeGroupHeight(g)*(g.max-g.min);return {id:line.id,label:channelName(line.id),color:line.color,value,unit:g.unit}}).filter(Boolean)}
 function readAt(t){return valuesAt(t).map(q=>`<span style="color:${q.color}">${q.label} ${Number(q.value.toPrecision(4))} ${q.unit}</span>`).join(' · ')}
@@ -196,104 +197,41 @@ function scopeCursorMarkers(axes, index, color, x, y, left, width, row, top) {
 function decorate(){if(forwardCursorSummary)forwardCursorSummary.hidden=true;wave.querySelectorAll('.scope-decoration').forEach(n=>n.remove());let a=axes();if(!a)return;let lines=traces(),channels=window.eg1163ProtectionView?[...(window.liveScopeSelected??[])].map(id=>({id,color:window.liveScopeChannels[id].color})):lines,choices=forwardCursor?forwardWaveSpecs().flatMap(([, , ,signals])=>signals.map(([id])=>({id}))):legacyScopeButtons().map(button=>({id:scopeChannelId(button)})),key=choices.map(q=>q.id).join('|');for(let q of channels){let button=document.getElementById('w'+q.id);if(button)button.style.color=q.color}if(key!==channelList){let previous=cursorChannel.value;cursorChannel.innerHTML=choices.map(q=>`<option value="${q.id}">${channelName(q.id)}</option>`).join('');cursorChannel.value=choices.some(q=>q.id===previous)?previous:(channels[0]?.id??choices[0]?.id??'');channelList=key;resetY()}for(let axis of ['x','y'])axisButtons[axis].classList.toggle('active',axis===cursorAxis);let root=document.createElementNS('http://www.w3.org/2000/svg','g'),row=pfc?185:190,top=pfc?28:35,left=pfc?80:75,width=pfc?885:895,bottom=a.bottom??a.groups.length*row-10;root.setAttribute('class','scope-decoration');root.setAttribute('pointer-events','none');let html='';if(currentChip!=='EG12523'&&!wave.closest('.common-scope-interface'))a.groups.forEach((g,i)=>{let members=channels.filter(q=>channelUnit(q.id)===g.unit);members.forEach((q,n)=>html+=`<text x="${430+n*530/Math.max(1,members.length)}" y="${scopeGroupTop(a,i,row,top)-10}" fill="${q.color}" font-size="12">${channelName(q.id)}${window.eg1163ProtectionView&&['HO','LO'].includes(q.id)?' · '+(window.eg1163PwmMeasurements?.[q.id]?.frequency?engineeringMeasure(window.eg1163PwmMeasurements[q.id].frequency,'Hz'):'—'):''}</text>`)});if(hoverFraction!==null&&!wave.closest('.scope').classList.contains('hide-forward-guide')){let x=left+hoverFraction*width;const horizontal=hoverY!==null?` M${left} ${hoverY}H${left+width}`: '';html+=`<path data-hover-cursor="true" d="M${x} 15V${bottom}${horizontal}" stroke="#dcebf5" stroke-width="1.5" stroke-dasharray="5 4"/>`}let text='',unit=channelUnit(cursorChannel.value),gIndex=a.groups.findIndex(g=>g.unit===unit),g=a.groups[gIndex];if(cursorEnabled&&g){for(let i=0;i<2;i++){let color=i?'#f284d8':'#ffd36d',x=left+cursorPositions[i]*width,y=scopeGroupTop(a,gIndex,row,top)+scopeGroupHeight(g)-(cursorValues[i]-g.min)/(g.max-g.min)*scopeGroupHeight(g),d=cursorAxis==='x'?`M${x} 15V${bottom}`:`M${left} ${y}H${left+width}`;html+=`<path data-cursor="${i}" d="${d}" stroke="transparent" stroke-width="16" pointer-events="stroke" style="cursor:${cursorAxis==='x'?'ew-resize':'ns-resize'}"/><path d="${d}" stroke="${color}" stroke-width="${cursorDrag===i?2.5:1.5}" ${i?'stroke-dasharray="6 4"':''}/>${scopeCursorMarkers(a, i, color, x, y, left, width, row, top)}`}if(forwardCursorSummary)html+=forwardCursorLabels(g,gIndex,cursorAxis==='x',a,left,width);else if(cursorAxis==='x'){let times=cursorPositions.map(f=>a.start+f*a.span),values=times.map(t=>valuesAt(t).find(q=>q.id===cursorChannel.value)?.value),delta=Math.abs(times[1]-times[0]);text=`${channelName(cursorChannel.value)} · A=${engineeringMeasure(times[0],'s')} · B=${engineeringMeasure(times[1],'s')} · Δt=${engineeringMeasure(delta,'s')} · 1/Δt=${delta?engineeringMeasure(1/delta,'Hz'):'—'}<br>YA=${Number.isFinite(values[0])?Number(values[0].toPrecision(5)):'—'} ${unit} · YB=${Number.isFinite(values[1])?Number(values[1].toPrecision(5)):'—'} ${unit} · ΔY=${values.every(Number.isFinite)?Number((values[1]-values[0]).toPrecision(5)):'—'} ${unit}`}else text=`${channelName(cursorChannel.value)} · A=${Number(cursorValues[0].toPrecision(5))} ${unit} · B=${Number(cursorValues[1].toPrecision(5))} ${unit} · ΔY=${Number((cursorValues[1]-cursorValues[0]).toPrecision(5))} ${unit}`}
 root.innerHTML=html;wave.append(root);cursorReadout.innerHTML=(hoverFraction===null||(forwardCursorSummary&&cursorEnabled)?'':`鼠标 ${engineeringMeasure(a.start+hoverFraction*a.span,'s')} · ${readAt(a.start+hoverFraction*a.span)}<br>`)+text}
 function installScopeChannelMenu() {
-  if (wave.dataset.channelMenuReady) return;
-  wave.dataset.channelMenuReady = 'true';
-  const menu = document.createElement('div');
-  menu.className = 'forward-channel-menu';
-  menu.setAttribute('role', 'group');
-  menu.setAttribute('aria-label', '波形选择');
-  menu.hidden = true;
-  const options = ['仅显示此信号', '显示本栏全部信号'].map(text => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = text;
-    menu.append(button);
-    return button;
-  });
-  const style = document.createElement('style');
-  style.textContent = ".forward-channel-menu{position:fixed;left:0;top:0;z-index:1000;display:grid;min-width:155px;padding:4px;background:#182c40;border:1px solid #536981;border-radius:6px;box-shadow:0 6px 18px #0005}\n.forward-channel-menu[hidden]{display:none}\n.forward-channel-menu button{padding:6px 9px;text-align:left;background:transparent;color:#e2eef8;border:0;border-radius:4px;font-size:12px}\n.forward-channel-menu button:is(:hover,:focus-visible){background:#2e5a7e}";
-  document.head.append(style);
-  document.body.append(menu);
-  let selected = null;
-
-  function close(restore = false) {
-    if (menu.hidden) return;
-    menu.hidden = true;
-    if (restore) selected?.button.focus();
-  }
-
-  function choose(showAll) {
-    if (!selected) return;
-    const {id, section, button, controls} = selected;
-    if (!section) {
-      close();
-      for (const channel of controls) {
-        if (channel.classList.contains('active') !== (showAll || channel === button)) channel.click();
-      }
-      button.focus({preventScroll:true});
-      return;
-    }
-    const [key, , , signals] = section;
-    for (const [channel] of signals) {
-      if (showAll || channel === id) pfcActive.add(channel);
-      else pfcActive.delete(channel);
-    }
-    const state = forwardWaveSettings();
-    if (!state.open.includes(key)) state.open.push(key);
-    state.selected = [...pfcActive];
-    try { localStorage.setItem('eg12523-wave-panels-v2', JSON.stringify(state)); } catch {}
-    close();
-    update();
-    wave.querySelector('[data-wave-channel="' + id + '"]')?.focus({preventScroll:true});
-  }
-
-  options[0].addEventListener('click', () => choose(false));
-  options[1].addEventListener('click', () => choose(true));
-  menu.addEventListener('keydown', event => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      close(true);
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      options[document.activeElement === options[0] ? 1 : 0].focus();
-    }
-  });
-
-  const selector = currentChip === 'EG12523' ? '[data-wave-channel]'
-    : currentChip === 'EG1654' ? 'button[data-channel]'
-    : 'button[data-live-channel], button[id^="w"]';
-  const container = wave.closest('.scope');
-  container.addEventListener('contextmenu', event => {
+  const scope = wave.closest('.scope');
+  scope.addEventListener('contextmenu', event => {
     const proxy = event.target.closest('[data-scope-proxy]');
-    const button = proxy
-      ? legacyScopeButtons().find(control => scopeChannelId(control) === proxy.dataset.scopeProxy)
-      : event.target.closest(selector);
+    const selector = currentChip === 'EG12523' ? '[data-wave-channel]' : currentChip === 'EG1654' ? 'button[data-channel]' : 'button[data-live-channel], button[id^="w"]';
+    const button = proxy ? legacyScopeButtons().find(node => scopeChannelId(node) === proxy.dataset.scopeProxy) : event.target.closest(selector);
     if (!button || button.hidden || button.disabled) return;
-    const id = scopeChannelId(button);
-    const section = currentChip === 'EG12523'
-      ? forwardWaveSpecs().find(([, , , signals]) => signals.some(([channel]) => channel === id))
-      : null;
-    const unit = channelUnit(id);
-    const controls = section ? [] : [...container.querySelectorAll(selector)]
-      .filter(control => !control.hidden && !control.disabled && (proxy || control.getClientRects().length) &&
-        Boolean(control.dataset.liveChannel) === Boolean(button.dataset.liveChannel) &&
-        (control === button || (unit && channelUnit(scopeChannelId(control)) === unit)));
-    if (!section && !controls.length) return;
     event.preventDefault();
-    selected = {id, section, button, controls};
-    menu.hidden = false;
-    const bounds = menu.getBoundingClientRect();
-    const anchor = (proxy || button).getBoundingClientRect();
-    const x = event.clientX || anchor.left;
-    const y = event.clientY || anchor.bottom;
-    menu.style.left = Math.max(4, Math.min(x, innerWidth - bounds.width - 4)) + 'px';
-    menu.style.top = Math.max(4, Math.min(y, innerHeight - bounds.height - 4)) + 'px';
-    options[0].focus({preventScroll:true});
+    const id = scopeChannelId(button);
+    if (currentChip === 'EG12523') {
+      const section = forwardWaveSpecs().find(([, , , signals]) => signals.some(([key]) => key === id));
+      if (!section) return;
+      const [key, , , signals] = section;
+      const only = pfcActive.has(id) && signals.every(([signal]) => signal === id || !pfcActive.has(signal));
+      for (const [signal] of signals) {
+        if (only || signal === id) pfcActive.add(signal);
+        else pfcActive.delete(signal);
+      }
+      const state = forwardWaveSettings();
+      if (!state.open.includes(key)) state.open.push(key);
+      state.selected = [...pfcActive];
+      try { localStorage.setItem('eg12523-wave-panels-v2', JSON.stringify(state)); } catch {}
+      update();
+    } else {
+      const unit = channelUnit(id);
+      const controls = legacyScopeButtons().filter(node => channelUnit(scopeChannelId(node)) === unit);
+      const only = button.classList.contains('active') && controls.every(node => node === button || !node.classList.contains('active'));
+      for (const node of controls) {
+        if (node.classList.contains('active') !== (only || node === button)) node.click();
+      }
+    }
+    const target = proxy
+      ? [...wave.querySelectorAll('[data-scope-proxy]')].find(node => node.dataset.scopeProxy === id)
+      : wave.querySelector('[data-wave-channel="' + id + '"]');
+    target?.focus({preventScroll:true});
   });
-  document.addEventListener('pointerdown', event => { if (!menu.contains(event.target)) close(); }, true);
-  document.addEventListener('focusin', event => { if (!menu.contains(event.target)) close(); });
-  window.addEventListener('scroll', () => close(), true);
-  window.addEventListener('resize', () => close());
 }
 
 installScopeChannelMenu();
@@ -356,10 +294,11 @@ function commonScopeYAxis(group, top, left, bottom) {
     }
   }
   const buttons=legacyScopeButtons().filter(button=>channelUnit(scopeChannelId(button))===group.unit);
+  for(const button of buttons)stableChannelUnits.set(scopeChannelId(button),group.unit);
   const signals=buttons.map(button=>{
     const id=scopeChannelId(button), active=button.classList.contains('active');
     const color=button.style.color || '#bdd5eb';
-    return `<button type="button" data-scope-proxy="${id}" aria-pressed="${active}" style="--signal-color:${color}" title="${channelName(id)} · 左键开关，右键选本栏信号">${channelName(id)}</button>`;
+    return `<button type="button" data-scope-proxy="${id}" aria-pressed="${active}" style="--signal-color:${color}" title="${channelName(id)} · 左键开关，右键切换仅此信号／本栏全部">${channelName(id)}</button>`;
   }).join('');
   const handle=bottom+16;
   return svg+`<foreignObject x="22" y="${top-32}" width="948" height="32"><div xmlns="http://www.w3.org/1999/xhtml" class="common-scope-symbols"><b>${label}</b>${signals}</div></foreignObject>
@@ -499,8 +438,6 @@ function installLegacyScopeInterface() {
   if(fixedChannels) channelOptions.append(fixedChannels);
   if(liveChannels) channelOptions.append(liveChannels);
   channelOptions.append(...scope.querySelectorAll('button[id^="w"]'));
-  const channelsButton = button('通道选择', () => { channelOptions.hidden=!channelOptions.hidden; sync(); });
-  channelsButton.setAttribute('aria-expanded','false');
 
   const triggerOptions = document.createElement('div');
   triggerOptions.className = 'common-scope-options-inner';
@@ -552,7 +489,8 @@ function installLegacyScopeInterface() {
   forwardCursorSummary.className='common-scope-summary';
   forwardCursorSummary.hidden=true;
   bar.append(forwardCursorSummary);
-  band.append(channelOptions,triggerOptions,cursorOptions);
+  band.append(triggerOptions,cursorOptions);
+  scope.append(channelOptions);
   tools.style.display='none';
   if (fullSource) fullSource.hidden=true;
   if (steadySource && steadySource!==byId('resetAxes')) steadySource.hidden=true;
@@ -564,9 +502,8 @@ function installLegacyScopeInterface() {
     zoom.setAttribute('aria-pressed', String(navigation.value==='zoom'));
     guide.setAttribute('aria-pressed', String(!scope.classList.contains('hide-forward-guide')));
     triggerButton.setAttribute('aria-expanded',String(!triggerOptions.hidden));
-    channelsButton.setAttribute('aria-expanded',String(!channelOptions.hidden));
-    cursorToggle.setAttribute('aria-expanded',String(cursorEnabled));
-    band.hidden=channelOptions.hidden && triggerOptions.hidden && !cursorEnabled;
+      cursorToggle.setAttribute('aria-expanded',String(cursorEnabled));
+    band.hidden=triggerOptions.hidden && !cursorEnabled;
     const view=axes();
     const micro=view?.span < .002;
     const scale=micro?1e6:1000, unit=micro?'µs':'ms';
