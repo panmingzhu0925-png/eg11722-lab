@@ -553,7 +553,10 @@ function installScopeChannelMenu() {
     if (currentChip === 'EG12523') {
       const section = forwardWaveSpecs().find(([, , , signals]) => signals.some(([key]) => key === id));
       if (!section) return;
-      const [key, , , signals] = section;
+      const [key, , , sectionSignals] = section;
+      const defs = forwardExtraDefs();
+      const unit = defs[id].group;
+      const signals = sectionSignals.filter(([signal]) => defs[signal].group === unit);
       const only = pfcActive.has(id) && signals.every(([signal]) => signal === id || !pfcActive.has(signal));
       for (const [signal] of signals) {
         if (only || signal === id) pfcActive.add(signal);
