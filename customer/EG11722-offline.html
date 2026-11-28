@@ -411,7 +411,7 @@ function installScopeChannelMenu() {
       const state = forwardWaveSettings();
       if (!state.open.includes(key)) state.open.push(key);
       state.selected = [...pfcActive];
-      try { localStorage.setItem('eg12523-customer-wave-panels-v2', JSON.stringify(state)); } catch {}
+      try { localStorage.setItem('eg12523-customer-wave-compact-v1', JSON.stringify(state)); } catch {}
       update();
     } else {
       const unit = channelUnit(id);
@@ -432,7 +432,7 @@ installScopeChannelMenu();
 
 function cursorPoint(e){let p=wave.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(wave.getScreenCTM().inverse())}
 wave.addEventListener('pointerdown',e=>{let hit=e.target.closest?.('[data-cursor]');if(!cursorEnabled||!hit||e.button!==0)return;e.preventDefault();e.stopImmediatePropagation?.();cursorDrag=Number(hit.dataset.cursor);wave.setPointerCapture(e.pointerId);decorate()},true);
-wave.addEventListener('pointermove',e=>{let a=axes();if(!a)return;let p=cursorPoint(e),left=pfc?80:75,width=pfc?885:895;if(cursorDrag!==null){e.preventDefault();e.stopImmediatePropagation?.();if(cursorAxis==='x')cursorPositions[cursorDrag]=Math.max(0,Math.min(1,(p.x-left)/width));else{let unit=channelUnit(cursorChannel.value),index=a.groups.findIndex(g=>g.unit===unit),g=a.groups[index];if(g)cursorValues[cursorDrag]=g.min+Math.max(0,Math.min(1,1-(p.y-(scopeGroupTop(a,index,pfc?185:190,pfc?28:35)))/scopeGroupHeight(g)))*(g.max-g.min)}decorate();return}const onPlot = !e.target.closest?.('[data-wave-channel],[data-wave-fold],[data-scope-resize],[data-common-resize],[data-scope-proxy]') &&
+wave.addEventListener('pointermove',e=>{let a=axes();if(!a)return;let p=cursorPoint(e),left=pfc?80:75,width=pfc?885:895;if(cursorDrag!==null){e.preventDefault();e.stopImmediatePropagation?.();if(cursorAxis==='x')cursorPositions[cursorDrag]=Math.max(0,Math.min(1,(p.x-left)/width));else{let unit=channelUnit(cursorChannel.value),index=a.groups.findIndex(g=>g.unit===unit),g=a.groups[index];if(g)cursorValues[cursorDrag]=g.min+Math.max(0,Math.min(1,1-(p.y-(scopeGroupTop(a,index,pfc?185:190,pfc?28:35)))/scopeGroupHeight(g)))*(g.max-g.min)}decorate();return}const onPlot = !e.target.closest?.('[data-wave-channel],[data-wave-fold],[data-wave-more],[data-scope-resize],[data-common-resize],[data-scope-proxy]') &&
       a.groups.some((group,index) => {
         const top = scopeGroupTop(a,index,pfc?185:190,pfc?28:35);
         return p.y >= top && p.y <= top + scopeGroupHeight(group);
